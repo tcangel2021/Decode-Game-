@@ -1,0 +1,2898 @@
+<!-- ... existing code ... -->
+  <title>VocabMatch 4×4 — 3D Decode Classroom Vocabulary Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            display: ['"Fredoka"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef6ff',
+              100: '#d9eaff',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+            },
+            accent: {
+              400: '#fbbf24',
+              500: '#f59e0b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+      background-color: #0b4db8;
+      user-select: none;
+    }
+
+    /* Full-bleed Detective Decode Sunburst Background Layer */
+    #appBackdropLayer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transition: filter 0.35s ease, transform 0.35s ease;
+    }
+
+    #appBackdropDim {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      transition: background 0.35s ease;
+    }
+
+    /* Hide number input spinners */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    @keyframes shakeError {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+
+    @keyframes popSuccess {
+      0% { transform: scale(0.95); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes floatHero {
+      0%, 100% { transform: perspective(900px) rotateY(-4deg) rotateX(3deg) translateY(0px); }
+      50% { transform: perspective(900px) rotateY(4deg) rotateX(1deg) translateY(-6px); }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 18px rgba(56, 189, 248, 0.35), inset 0 1px 0 rgba(255,255,255,0.25); }
+      50% { box-shadow: 0 0 28px rgba(56, 189, 248, 0.65), inset 0 1px 0 rgba(255,255,255,0.4); }
+    }
+
+    .animate-shake {
+      animation: shakeError 0.42s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    .animate-pop {
+      animation: popSuccess 0.35s ease-out forwards;
+    }
+
+    .hero-3d-tilt {
+      animation: floatHero 6s ease-in-out infinite;
+      transform-style: preserve-3d;
+    }
+
+    /* 3D DECODE CONSOLE CHASSIS & TACTILE DEPTH */
+    .decode-chassis {
+      background: linear-gradient(165deg, #1e293b 0%, #0f172a 100%);
+      border: 2px solid #334155;
+      box-shadow:
+        0 20px 45px rgba(0, 0, 0, 0.65),
+        0 6px 0 #090d16,
+        inset 0 2px 1px rgba(148, 163, 184, 0.25);
+    }
+
+    .decode-card-3d {
+      background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+      border: 2px solid #cbd5e1;
+      box-shadow:
+        0 5px 0 #94a3b8,
+        0 10px 18px rgba(2, 6, 23, 0.35),
+        inset 0 2px 0 #ffffff;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.2s ease;
+    }
+
+    .decode-card-3d:active {
+      transform: translateY(2px);
+      box-shadow:
+        0 3px 0 #94a3b8,
+        0 5px 10px rgba(2, 6, 23, 0.35),
+        inset 0 2px 0 #ffffff;
+    }
+
+    .decode-card-focused {
+      border-color: #38bdf8 !important;
+      box-shadow:
+        0 5px 0 #0284c7,
+        0 0 22px rgba(56, 189, 248, 0.5),
+        inset 0 2px 0 #ffffff !important;
+    }
+
+    .decode-card-correct {
+      background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%) !important;
+      border-color: #10b981 !important;
+      box-shadow:
+        0 5px 0 #059669,
+        0 0 20px rgba(16, 185, 129, 0.45),
+        inset 0 2px 0 #ffffff !important;
+    }
+
+    .decode-card-incorrect {
+      background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%) !important;
+      border-color: #f43f5e !important;
+      box-shadow:
+        0 5px 0 #e11d48,
+        0 0 20px rgba(244, 63, 94, 0.45),
+        inset 0 2px 0 #ffffff !important;
+    }
+
+    .decoder-slot-recessed {
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      box-shadow:
+        inset 0 4px 8px rgba(0, 0, 0, 0.75),
+        0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+
+    .keycap-3d {
+      box-shadow:
+        0 4px 0 #334155,
+        0 7px 12px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .keycap-3d:active {
+      transform: translateY(3px);
+      box-shadow:
+        0 1px 0 #334155,
+        0 3px 6px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Strict Two-Column 4-Row Classroom Board Grid */
+    .strict-board-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: clamp(0.75rem, 2.2vw, 2rem);
+      width: 100%;
+      height: 100%;
+      align-items: stretch;
+    }
+
+    .four-row-column {
+      display: grid;
+      grid-template-rows: repeat(4, minmax(0, 1fr));
+      gap: clamp(0.55rem, 1.4vh, 1rem);
+      height: 100%;
+      min-height: 0;
+    }
+
+    /* Custom subtle scrollbar for modal only */
+    .modal-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .modal-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    .modal-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .modal-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex flex-col h-screen max-h-screen overflow-hidden relative">
+
+  <!-- FULL-BLEED DECODE DETECTIVE SUNBURST BACKGROUND (HOME & GAMEPLAY) -->
+  <div id="appBackdropLayer" aria-hidden="true"></div>
+  <div id="appBackdropDim" aria-hidden="true" class="bg-slate-950/15"></div>
+
+  <!-- ===================================================================== -->
+  <!-- 1. HOME SCREEN WITH 3D HERO IMAGE & QUICK LAUNCH                      -->
+  <!-- ===================================================================== -->
+  <section id="homeScreen" class="relative z-10 flex-1 w-full h-full overflow-y-auto flex flex-col items-center justify-center px-4 py-6 sm:py-8">
+    <div class="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center text-center">
+      <!-- Centered Top Title Pill -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/85 backdrop-blur-md border border-amber-300/60 text-amber-200 font-mono text-xs sm:text-sm font-bold tracking-widest uppercase mb-4 shadow-lg">
+        <span class="w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
+        <span>THE TOP SECRET WORD &amp; CIPHER GAME • 4×4 EDITION</span>
+      </div>
+
+      <h1 class="font-display font-bold text-4xl sm:text-5xl md:text-6xl text-white tracking-tight text-center drop-shadow-[0_4px_12px_rgba(2,6,23,0.75)]">
+        VocabMatch <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400">Decode 4×4</span>
+      </h1>
+      <p class="mt-2.5 text-white font-semibold text-sm sm:text-base md:text-lg max-w-2xl text-center drop-shadow-[0_2px_8px_rgba(2,6,23,0.8)]">
+        Crack the 4-digit visual cipher every round! Match the 4 pictures on the left with the 4 numbered vocabulary words on the right.
+      </p>
+
+      <!-- FRAMED 3D HERO IMAGE SHOWCASE CARD -->
+      <div class="mt-6 sm:mt-8 w-full max-w-2xl mx-auto">
+        <div class="hero-3d-tilt decode-chassis rounded-3xl p-3 sm:p-4 border-2 border-amber-300/60 relative bg-slate-900/90 backdrop-blur-md">
+          <!-- Top Console Bezel Rivets & Status LED -->
+          <div class="flex items-center justify-between px-2 pb-2.5 text-xs font-mono text-slate-300">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+              <span class="ml-2 font-bold text-amber-300 tracking-wider">DECODE_TOP_SECRET_04.SYS</span>
+            </div>
+            <span id="homeDeckSummaryBadge" class="px-2.5 py-0.5 rounded-full bg-blue-950/90 border border-cyan-400/50 text-cyan-200 font-bold">
+              16 items • 4 rounds
+            </span>
+          </div>
+
+          <!-- Hero Image Container -->
+          <div class="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 border border-amber-300/40 aspect-[16/9] flex items-center justify-center shadow-inner">
+            <img
+              id="homeHeroImage"
+              alt="VocabMatch 3D Decode Detective Game Showcase"
+              class="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary Home Action Buttons -->
+      <div class="mt-7 sm:mt-8 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 w-full max-w-2xl">
+        <button id="homeStartGameBtn" type="button"
+          class="flex-1 min-w-[220px] px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-display font-extrabold text-xl sm:text-2xl shadow-xl shadow-slate-950/40 border-b-4 border-amber-700 active:translate-y-1 transition flex items-center justify-center gap-3">
+          <span>🔍</span>
+          <span>Start Decode Game</span>
+        </button>
+
+        <button id="homeMusicToggleBtn" type="button" title="Toggle Detective Background Music"
+          class="px-5 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 font-display font-bold text-lg border-2 border-amber-400/50 border-b-4 border-b-slate-950 active:translate-y-1 transition flex items-center justify-center gap-2 shadow-lg backdrop-blur-md">
+          <span id="homeMusicIcon">🎵</span>
+          <span id="homeMusicLabel">Music: ON</span>
+        </button>
+
+        <button id="homeOpenSettingsBtn" type="button"
+          class="px-5 py-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-white font-display font-bold text-lg border-2 border-slate-500/70 border-b-4 border-b-slate-950 active:translate-y-1 transition flex items-center justify-center gap-2 shadow-lg backdrop-blur-md">
+          <span>⚙️</span>
+          <span>Settings</span>
+        </button>
+
+        <button id="homeOpenTeacherBtn" type="button"
+          class="px-5 py-4 rounded-2xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-display font-bold text-lg border-b-4 border-cyan-700 active:translate-y-1 transition flex items-center justify-center gap-2 shadow-lg">
+          <span>📂</span>
+          <span>Teacher JSON</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 2. TOP 3D DECODE HEADER BAR (SHOWN DURING GAMEPLAY & CELEBRATION)     -->
+  <!-- ===================================================================== -->
+  <header id="gameHeader" class="hidden relative w-full bg-slate-900/90 backdrop-blur-md border-b-2 border-cyan-400/30 shadow-lg px-3 sm:px-6 py-2.5 shrink-0 z-20">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+      
+      <!-- Left: Home Button & 3D Console Title -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <button id="backToHomeBtn" type="button" title="Return to Home Screen"
+          class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 flex items-center justify-center shadow-md border-b-2 border-amber-700 shrink-0 font-display font-bold text-lg active:translate-y-0.5 transition">
+          🏠
+        </button>
+        <div class="truncate text-center sm:text-left">
+          <h1 class="font-display font-bold text-lg sm:text-xl text-white leading-tight truncate">
+            Decode Vault 4×4
+          </h1>
+          <p class="text-[11px] sm:text-xs font-semibold text-amber-200/90 hidden sm:block">
+            Enter the 4-digit cipher code (1–4)
+          </p>
+        </div>
+      </div>
+
+      <!-- Center: Round Indicator, Live Countdown Timer & Progress Bar -->
+      <div class="flex flex-col items-center justify-center flex-1 max-w-lg px-2">
+        <div class="flex items-center justify-center gap-2 sm:gap-3 mb-1 flex-wrap">
+          <span id="roundBadge" class="inline-flex items-center px-3.5 py-1 rounded-full text-xs sm:text-sm md:text-base font-extrabold tracking-wide bg-gradient-to-r from-amber-300 to-amber-500 text-slate-950 shadow-sm font-mono">
+            ROUND 1 OF 4
+          </span>
+
+          <!-- Live Timer Badge (Visible when Timer != Off) -->
+          <span id="timerBadge" class="hidden inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm md:text-base font-mono font-extrabold bg-slate-800 text-amber-300 border border-amber-400/50 shadow-inner">
+            <span>⏱️</span>
+            <span id="timerText">00:30</span>
+          </span>
+
+          <span id="scoreBadge" class="hidden md:inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-bold bg-slate-800 text-emerald-300 border border-emerald-500/40 font-mono">
+            PTS: 0
+          </span>
+        </div>
+
+        <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <div id="roundProgressBar" class="h-full bg-gradient-to-r from-amber-400 via-cyan-400 to-emerald-400 rounded-full transition-all duration-500" style="width: 25%;"></div>
+        </div>
+      </div>
+
+      <!-- Right: Music Toggle, Settings & Fullscreen Quick Trigger -->
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button id="headerMusicBtn" type="button" title="Toggle Background Music"
+          class="p-2.5 sm:px-3 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-300 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 border border-amber-400/40">
+          <span id="headerMusicIcon" class="text-base">🎵</span>
+          <span class="hidden xl:inline">Music</span>
+        </button>
+
+        <button id="headerFullscreenBtn" type="button" title="Toggle Full Screen"
+          class="p-2.5 sm:px-3 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm transition flex items-center gap-1.5 border border-slate-600">
+          <span class="text-base">⛶</span>
+          <span class="hidden lg:inline">Full Screen</span>
+        </button>
+
+        <button id="openSettingsModalBtn" type="button"
+          class="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-95 text-slate-950 font-display font-bold text-xs sm:text-sm transition flex items-center gap-2 shadow-md border-b-2 border-amber-700">
+          <span class="text-base">⚙️</span>
+          <span>Settings</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 3. MAIN 3D DECODE GAMEPLAY STAGE (STRICT 4 ITEMS PER SCREEN)          -->
+  <!-- ===================================================================== -->
+  <main id="gameplayStage" class="hidden relative z-10 flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-6 py-2 sm:py-3.5 flex-col min-h-0 overflow-hidden">
+    
+    <!-- 3D Decode Console Outer Chassis -->
+    <div class="decode-chassis rounded-3xl p-2.5 sm:p-4 md:p-5 flex-1 flex flex-col min-h-0 overflow-hidden relative bg-slate-900/90 backdrop-blur-md border-2 border-cyan-300/40">
+      
+      <!-- Column Headers (Centered Titles) -->
+      <div class="strict-board-grid !h-auto mb-2 shrink-0">
+        <div class="flex items-center justify-center px-2 py-1 rounded-xl bg-slate-800/90 border border-cyan-500/30">
+          <span class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-cyan-300 flex items-center justify-center gap-2 text-center">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-[0_0_8px_#22d3ee]"></span>
+            <span>visual clues &amp; 4-digit cipher slots</span>
+          </span>
+        </div>
+        <div class="flex items-center justify-center px-2 py-1 rounded-xl bg-slate-800/90 border border-amber-400/30">
+          <span class="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-amber-300 flex items-center justify-center gap-2 text-center">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_8px_#fbbf24]"></span>
+            <span>numbered vocabulary keys (1–4)</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- STRICT 2-COLUMN x 4-ROW 3D DECODE BOARD -->
+      <div id="boardContainer" class="strict-board-grid flex-1 min-h-0">
+        <!-- LEFT COLUMN: EXACTLY 4 PICTURES + RECESSED 3D DECODER INPUT SLOTS -->
+        <div id="leftPicturesCol" class="four-row-column" aria-label="Pictures Column">
+          <!-- Populated dynamically with strictly 4 rows -->
+        </div>
+
+        <!-- RIGHT COLUMN: EXACTLY 4 NUMBERED LOWERCASE VOCABULARY PLAQUES -->
+        <div id="rightWordsCol" class="four-row-column" aria-label="Numbered Vocabulary Words Column">
+          <!-- Populated dynamically with strictly 4 rows -->
+        </div>
+      </div>
+
+      <!-- STATUS MESSAGE CONSOLE READOUT -->
+      <div id="feedbackBanner" class="mt-2.5 min-h-[2.25rem] flex items-center justify-center shrink-0">
+        <p id="feedbackText" class="text-xs sm:text-sm md:text-base font-bold text-cyan-200 text-center px-4 py-1 rounded-full bg-slate-950/90 border border-cyan-500/40 shadow-inner">
+          Decode the 4 clues: enter numbers <span class="text-amber-300 font-extrabold">1 – 4</span> in each picture slot.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- 4. END-OF-GAME CELEBRATION SCREEN                                     -->
+  <!-- ===================================================================== -->
+  <section id="celebrationScreen" class="hidden relative z-10 flex-1 w-full max-w-4xl mx-auto px-4 py-6 flex-col items-center justify-center text-center overflow-y-auto">
+    <div class="decode-chassis rounded-3xl p-6 sm:p-10 w-full max-w-2xl relative overflow-hidden text-white bg-slate-900/90 backdrop-blur-md">
+      <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center text-4xl sm:text-5xl shadow-lg shadow-amber-500/30 animate-pop border-b-4 border-amber-700">
+        🏆
+      </div>
+      <h2 class="font-display font-bold text-3xl sm:text-4xl text-white mb-2 text-center">
+        Vault Decoded!
+      </h2>
+      <p id="celebrationSubtitle" class="text-cyan-200 font-semibold text-base sm:text-lg mb-6 text-center">
+        Fantastic work! You cracked every 4-item vocabulary cipher.
+      </p>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
+        <div class="bg-slate-800/90 border border-cyan-500/30 rounded-2xl p-3 sm:p-4">
+          <div class="text-xs sm:text-sm font-bold text-cyan-300 uppercase">Rounds</div>
+          <div id="statRounds" class="font-display font-bold text-2xl sm:text-3xl text-white mt-1">4 / 4</div>
+        </div>
+        <div class="bg-slate-800/90 border border-emerald-500/30 rounded-2xl p-3 sm:p-4">
+          <div class="text-xs sm:text-sm font-bold text-emerald-300 uppercase">Total Words</div>
+          <div id="statWords" class="font-display font-bold text-2xl sm:text-3xl text-white mt-1">16</div>
+        </div>
+        <div class="bg-slate-800/90 border border-amber-500/30 rounded-2xl p-3 sm:p-4">
+          <div class="text-xs sm:text-sm font-bold text-amber-300 uppercase">Accuracy</div>
+          <div id="statAccuracy" class="font-display font-bold text-2xl sm:text-3xl text-white mt-1">100%</div>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+        <button id="playAgainBtn" type="button"
+          class="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:translate-y-0.5 text-white font-display font-bold text-lg shadow-lg border-b-4 border-blue-900 transition flex items-center justify-center gap-2">
+          <span>🔄</span>
+          <span>Play Again</span>
+        </button>
+        <button id="celebrationSettingsBtn" type="button"
+          class="w-full sm:w-auto px-6 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700 active:translate-y-0.5 text-white font-bold text-base border border-slate-600 border-b-4 border-b-slate-950 transition flex items-center justify-center gap-2">
+          <span>⚙️</span>
+          <span>Settings &amp; JSON</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- 5. 3D TACTILE KEYPAD & DECODE ACTION BAR                              -->
+  <!-- ===================================================================== -->
+  <footer id="bottomActionBar" class="hidden w-full bg-slate-900/95 backdrop-blur-md border-t-2 border-slate-700/90 px-3 sm:px-6 py-2.5 sm:py-3 shrink-0 z-20">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- 3D Mechanical Keycaps (1-4 + Clear) -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-mono font-extrabold uppercase tracking-wider text-cyan-300 mr-1 hidden md:inline">
+          CIPHER KEYS:
+        </span>
+        <button type="button" data-keypad="1" class="keypad-btn keycap-3d w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-700 hover:bg-cyan-500 hover:text-slate-950 text-white font-display font-bold text-xl border border-slate-500">1</button>
+        <button type="button" data-keypad="2" class="keypad-btn keycap-3d w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-700 hover:bg-cyan-500 hover:text-slate-950 text-white font-display font-bold text-xl border border-slate-500">2</button>
+        <button type="button" data-keypad="3" class="keypad-btn keycap-3d w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-700 hover:bg-cyan-500 hover:text-slate-950 text-white font-display font-bold text-xl border border-slate-500">3</button>
+        <button type="button" data-keypad="4" class="keypad-btn keycap-3d w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-slate-700 hover:bg-cyan-500 hover:text-slate-950 text-white font-display font-bold text-xl border border-slate-500">4</button>
+        <button type="button" id="clearInputsBtn" title="Clear All Cipher Slots"
+          class="keycap-3d px-3.5 h-11 sm:h-12 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white font-bold text-xs sm:text-sm border border-slate-600">
+          Clear
+        </button>
+      </div>
+
+      <!-- Primary 3D Decode / Next Round Buttons -->
+      <div class="flex items-center gap-2.5 sm:gap-3 ml-auto">
+        <button id="checkAnswersBtn" type="button"
+          class="px-5 sm:px-8 h-11 sm:h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:translate-y-0.5 text-slate-950 font-display font-extrabold text-base sm:text-lg shadow-lg shadow-cyan-500/25 border-b-4 border-blue-900 transition flex items-center gap-2">
+          <span>🔓</span>
+          <span>Decode &amp; Check</span>
+        </button>
+
+        <button id="nextRoundBtn" type="button"
+          class="hidden px-6 sm:px-9 h-11 sm:h-12 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 active:translate-y-0.5 text-slate-950 font-display font-extrabold text-base sm:text-lg shadow-lg shadow-emerald-500/30 border-b-4 border-emerald-800 transition flex items-center gap-2 animate-pop">
+          <span id="nextRoundBtnLabel">NEXT</span>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- 6. ORGANIZED CLASSROOM SETTINGS MODAL                                 -->
+  <!--    (Shuffle, Sound, BG Music, Timer, Items, Full Screen, Background)  -->
+  <!-- ===================================================================== -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white text-slate-800 rounded-3xl shadow-2xl border-2 border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-5 sm:px-7 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div class="text-center sm:text-left">
+          <h2 class="font-display font-bold text-xl sm:text-2xl flex items-center gap-2">
+            <span>⚙️</span>
+            <span>Game &amp; Classroom Settings</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+            Configure BG music, sound, timer, deck size (multiples of 4), shuffle &amp; backdrop
+          </p>
+        </div>
+        <button id="closeSettingsModalBtn" type="button"
+          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl font-bold transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Organized Settings Grid -->
+      <div class="p-5 sm:p-6 overflow-y-auto modal-scroll space-y-5 flex-1">
+        
+        <!-- Row 1: Shuffle, Sound Effects & Background Music Toggles -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Shuffle Setting -->
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+            <div>
+              <div class="font-display font-bold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
+                <span>🔀</span>
+                <span>Shuffle</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Randomize each round
+              </p>
+            </div>
+            <button id="settingShuffleToggle" type="button"
+              class="px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-blue-600 text-white shrink-0">
+              ON
+            </button>
+          </div>
+
+          <!-- Sound Effects Setting -->
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
+            <div>
+              <div class="font-display font-bold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
+                <span id="settingSoundEmoji">🔊</span>
+                <span>Sound FX</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Keycaps &amp; chimes
+              </p>
+            </div>
+            <button id="settingSoundToggle" type="button"
+              class="px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-emerald-600 text-white shrink-0">
+              ON
+            </button>
+          </div>
+
+          <!-- Background Music Setting -->
+          <div class="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-2">
+            <div>
+              <div class="font-display font-bold text-sm sm:text-base text-amber-950 flex items-center gap-1.5">
+                <span id="settingMusicEmoji">🎵</span>
+                <span>BG Music</span>
+              </div>
+              <p class="text-[11px] text-amber-800 mt-0.5">
+                Detective 6/8 theme
+              </p>
+            </div>
+            <button id="settingMusicToggle" type="button"
+              class="px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-amber-500 text-slate-950 shrink-0">
+              ON
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Round Countdown Timer Presets -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="font-display font-bold text-base text-slate-900 flex items-center gap-1.5">
+              <span>⏱️</span>
+              <span>Round Countdown Timer</span>
+            </div>
+            <span id="settingTimerCurrentLabel" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              Off
+            </span>
+          </div>
+          <div id="timerOptionsGroup" class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <button type="button" data-timer="0" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">Off</button>
+            <button type="button" data-timer="20" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">20s</button>
+            <button type="button" data-timer="30" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">30s</button>
+            <button type="button" data-timer="40" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">40s</button>
+            <button type="button" data-timer="60" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">1 minute</button>
+            <button type="button" data-timer="120" class="timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 transition">2 minutes</button>
+          </div>
+        </div>
+
+        <!-- Row 3: Number of Items Selector (Strictly Multiples of 4) -->
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="font-display font-bold text-base text-slate-900 flex items-center gap-1.5">
+              <span>🔢</span>
+              <span>Number of Vocabulary Items</span>
+            </div>
+            <span id="settingItemCountSummary" class="text-xs font-extrabold px-3 py-1 rounded-full bg-blue-100 text-blue-800">
+              16 items • 4 rounds of 4
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mb-3">
+            Strictly grouped into sets of <strong>4 items per round</strong>. Choose how many items from your deck to play:
+          </p>
+          <div id="itemCountOptionsContainer" class="flex flex-wrap gap-2">
+            <!-- Dynamically populated with multiples of 4 (4, 8, 12, 16, ... up to full deck) -->
+          </div>
+        </div>
+
+        <!-- Row 4: Full Screen & Teacher JSON Manager Shortcuts -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <!-- Full Screen Toggle -->
+          <button id="settingFullscreenBtn" type="button"
+            class="p-4 rounded-2xl bg-indigo-50 hover:bg-indigo-100 border-2 border-indigo-200 text-left flex items-center justify-between gap-3 transition">
+            <div>
+              <div class="font-display font-bold text-base text-indigo-950 flex items-center gap-1.5">
+                <span>⛶</span>
+                <span>Full Screen Mode</span>
+              </div>
+              <p id="settingFullscreenStatus" class="text-xs text-indigo-700 mt-0.5">
+                Expand for ViewBoard / iPad
+              </p>
+            </div>
+            <span class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shrink-0">
+              Toggle
+            </span>
+          </button>
+
+          <!-- Open Teacher JSON & Question Builder -->
+          <button id="settingOpenTeacherJsonBtn" type="button"
+            class="p-4 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 text-left flex items-center justify-between gap-3 transition">
+            <div>
+              <div class="font-display font-bold text-base text-amber-950 flex items-center gap-1.5">
+                <span>📂</span>
+                <span>Teacher JSON &amp; Builder</span>
+              </div>
+              <p class="text-xs text-amber-800 mt-0.5">
+                Upload JSON, paste URLs or upload images
+              </p>
+            </div>
+            <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs shrink-0">
+              Open
+            </span>
+          </button>
+        </div>
+
+        <!-- Row 5: Optional Custom Background Image & Custom BG Audio Upload -->
+        <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div class="font-display font-bold text-sm sm:text-base text-slate-900 flex items-center gap-1.5">
+                <span>🖼️</span>
+                <span>Theme Background &amp; Custom Audio</span>
+              </div>
+              <p class="text-xs text-slate-600">
+                Using the <strong>Decode Detective Sunburst</strong> theme &amp; <strong>Detective 6/8 Music</strong>. Optionally upload your own cover image or MP3:
+              </p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="cursor-pointer px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-xs">
+              🖼️ Upload Custom Background
+              <input id="customBgUploadInput" type="file" accept="image/*" class="hidden" />
+            </label>
+            <button id="resetDefaultBgBtn" type="button"
+              class="px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition">
+              Reset Decode Background
+            </button>
+
+            <label class="cursor-pointer px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition shadow-xs">
+              🎶 Upload Custom Music
+              <input id="customMusicUploadInput" type="file" accept="audio/*" class="hidden" />
+            </label>
+            <button id="resetDefaultMusicBtn" type="button"
+              class="hidden px-3 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition">
+              Reset Detective Music
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Reshuffle Current Round Action (Visible during active gameplay) -->
+        <div id="settingsReshuffleRow" class="pt-1 flex items-center justify-between gap-3 border-t border-slate-200">
+          <span class="text-xs font-semibold text-slate-500">
+            Need a fresh arrangement right now?
+          </span>
+          <button id="settingsReshuffleNowBtn" type="button"
+            class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm transition flex items-center gap-1.5">
+            <span>🔀</span>
+            <span>Shuffle Current Round Now</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings Footer -->
+      <div class="px-5 sm:px-7 py-3.5 bg-slate-100 border-t border-slate-200 flex items-center justify-between shrink-0">
+        <span class="text-xs font-semibold text-slate-500">Changes apply immediately</span>
+        <button id="doneSettingsBtn" type="button"
+          class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-display font-bold text-base shadow-sm transition">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 7. TEACHER JSON MANAGEMENT & IMAGE UPLOAD / URL BUILDER MODAL         -->
+  <!-- ===================================================================== -->
+  <div id="teacherModal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white text-slate-800 rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-5 sm:px-7 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div>
+          <h2 class="font-display font-bold text-xl sm:text-2xl flex items-center gap-2">
+            <span>📚</span>
+            <span>Teacher Vocabulary &amp; JSON Manager</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 mt-0.5">
+            Items are automatically grouped into sets of <strong>4 per round</strong>. Paste image URLs or upload photos directly.
+          </p>
+        </div>
+        <button id="closeTeacherModalBtn" type="button"
+          class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl font-bold transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 sm:p-7 overflow-y-auto modal-scroll space-y-6 flex-1">
+        
+        <!-- STRICT DIVISIBILITY BY 4 WARNING / RESOLUTION BANNER -->
+        <div id="divisibilityAlertBox" class="hidden rounded-2xl bg-amber-50 border-2 border-amber-400 p-4 sm:p-5 shadow-sm">
+          <div class="flex items-start gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-extrabold text-xl shrink-0">
+              !
+            </div>
+            <div class="flex-1">
+              <h3 class="font-display font-bold text-lg text-amber-950">
+                Action Required: Vocabulary Count Must Be Divisible by 4
+              </h3>
+              <p id="divisibilityMessage" class="text-sm sm:text-base text-amber-900 mt-1 font-medium">
+                You currently have 18 items. Each round requires strictly 4 items, leaving 2 extra items.
+              </p>
+
+              <!-- Resolution Buttons -->
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <button id="resolveAddMissingBtn" type="button"
+                  class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs transition flex items-center gap-1.5">
+                  <span>➕</span>
+                  <span id="resolveAddMissingText">Add 2 More Item(s)</span>
+                </button>
+
+                <button id="resolveExcludeExtraBtn" type="button"
+                  class="px-4 py-2.5 rounded-xl bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold text-sm border border-amber-400 transition flex items-center gap-1.5">
+                  <span>✂️</span>
+                  <span id="resolveExcludeExtraText">Exclude Last 2 Item(s)</span>
+                </button>
+              </div>
+
+              <!-- Quick Add Missing Items Inline Form (Supports URL or Local Image Upload) -->
+              <div id="quickAddMissingForm" class="hidden mt-4 pt-4 border-t border-amber-300/80 space-y-3">
+                <p class="text-xs font-extrabold uppercase tracking-wider text-amber-900">
+                  Fill in the missing item(s) below (paste image URL, upload image file, or enter emoji):
+                </p>
+                <div id="quickAddInputsContainer" class="space-y-2.5">
+                  <!-- Dynamically generated rows for the exact 1, 2, or 3 missing items -->
+                </div>
+                <button id="submitQuickAddBtn" type="button"
+                  class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition">
+                  Save &amp; Complete Set of 4
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pre-Prepared Question Builder: Add Vocabulary Item with Internet URL OR File Upload -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 border-2 border-indigo-200">
+          <h3 class="font-display font-bold text-base sm:text-lg text-slate-900 mb-3 flex items-center gap-2">
+            <span>🖼️</span>
+            <span>Add Pre-Prepared Vocabulary Item (Image URL or Upload)</span>
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+            <!-- Vocabulary Word Input -->
+            <div class="md:col-span-4">
+              <label class="block text-xs font-extrabold uppercase text-slate-600 mb-1">Vocabulary Word</label>
+              <input id="manualWordInput" type="text" placeholder="e.g., telescope"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            <!-- Image Source: Paste URL / Emoji OR Upload File -->
+            <div class="md:col-span-5">
+              <label class="block text-xs font-extrabold uppercase text-slate-600 mb-1">
+                Paste Image Address (URL) or Emoji
+              </label>
+              <div class="flex items-center gap-2">
+                <input id="manualImageInput" type="text" placeholder="https://... or 🔭"
+                  class="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label title="Upload image from computer/iPad"
+                  class="cursor-pointer px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shrink-0 transition flex items-center gap-1.5 shadow-xs">
+                  <span>📁 Upload</span>
+                  <input id="manualImageFileInput" type="file" accept="image/*" class="hidden" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Live Preview + Add Button -->
+            <div class="md:col-span-3 flex items-end gap-2.5">
+              <div id="manualImagePreviewBox" title="Live Image Preview"
+                class="w-12 h-12 rounded-xl border-2 border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 text-2xl">
+                🖼️
+              </div>
+              <button id="addManualItemBtn" type="button"
+                class="flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-display font-bold text-sm shadow-sm transition">
+                + Add Item
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- JSON Upload & Export/Paste Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Upload JSON Card -->
+          <div class="p-4 sm:p-5 rounded-2xl border-2 border-dashed border-blue-300 bg-blue-50/60 flex flex-col justify-between">
+            <div>
+              <h3 class="font-display font-bold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+                <span>📤</span> Upload / Export JSON Deck
+              </h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                Upload a <code class="bg-white px-1.5 py-0.5 rounded border text-blue-700 font-semibold">.json</code> file or export your current deck (including uploaded images &amp; URLs) to reuse later.
+              </p>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <label class="cursor-pointer px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm shadow-xs transition inline-flex items-center gap-1.5">
+                <span>Choose .JSON</span>
+                <input id="jsonFileInput" type="file" accept=".json,application/json" class="hidden" />
+              </label>
+              <button id="exportCurrentJsonBtn" type="button"
+                class="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xs transition">
+                💾 Export Deck JSON
+              </button>
+              <button id="downloadSampleJsonBtn" type="button"
+                class="px-3 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs border border-slate-300 transition">
+                Sample JSON
+              </button>
+            </div>
+          </div>
+
+          <!-- Paste Raw JSON Card -->
+          <div class="p-4 sm:p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+            <div>
+              <h3 class="font-display font-bold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+                <span>📋</span> Paste JSON Directly
+              </h3>
+              <textarea id="rawJsonTextarea" rows="3" placeholder='[{"word": "apple", "image": "https://..."}, {"word": "rocket", "image": "🚀"}]'
+                class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+            <div class="mt-2.5 flex items-center justify-between gap-2">
+              <button id="loadPresetDeckBtn" type="button"
+                class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">
+                Reset to Built-in 16-Item Deck
+              </button>
+              <button id="parsePastedJsonBtn" type="button"
+                class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm transition">
+                Load Pasted JSON
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Deck Preview Grouped by Rounds of 4 -->
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-display font-bold text-lg text-slate-900">
+              Current Vocabulary List (<span id="deckTotalCount" class="text-blue-600">16</span> items)
+            </h3>
+            <span id="deckRoundSummary" class="text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800">
+              4 Complete Rounds (4 items/round)
+            </span>
+          </div>
+
+          <div id="deckItemsList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-64 overflow-y-auto modal-scroll pr-1">
+            <!-- Dynamically rendered list of items with Round badges, thumbnails & remove button -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 sm:px-7 py-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <span id="modalFooterStatus" class="text-xs sm:text-sm font-bold text-slate-600">
+          Ready to launch with sets of 4 items.
+        </span>
+        <div class="flex items-center gap-3 ml-auto">
+          <button id="cancelModalBtn" type="button"
+            class="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-700 font-bold text-sm border border-slate-300 transition">
+            Close
+          </button>
+          <button id="applyAndStartGameBtn" type="button"
+            class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-display font-bold text-base shadow-md transition">
+            Start Game with Deck
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC                                          -->
+  <!-- ===================================================================== -->
+  <script>
+    /**
+     * FULL-BLEED VIBRANT BLUE SUNBURST DETECTIVE-BOARD BACKGROUND SVG
+     * Inspired by the Decode "The Top Secret Word Game" cover art:
+     * Royal blue sunburst rays, floating letter tiles (A/B/C/E/L), golden stars,
+     * vibrant food/clue icons around the edges, and lush green tropical corner leaves.
+     */
+    const DECODE_BACKDROP_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <radialGradient id="skyBase" cx="50%" cy="46%" r="65%">
+            <stop offset="0%" stop-color="#38bdf8"/>
+            <stop offset="45%" stop-color="#1d4ed8"/>
+            <stop offset="100%" stop-color="#0f296e"/>
+          </radialGradient>
+          <radialGradient id="centerGlow" cx="50%" cy="46%" r="36%">
+            <stop offset="0%" stop-color="#bae6fd" stop-opacity="0.65"/>
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="leafGrad1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#4ade80"/>
+            <stop offset="100%" stop-color="#15803d"/>
+          </linearGradient>
+          <linearGradient id="leafGrad2" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0%" stop-color="#22c55e"/>
+            <stop offset="100%" stop-color="#166534"/>
+          </linearGradient>
+          <linearGradient id="starGold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fef08a"/>
+            <stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Royal Blue Radial Base -->
+        <rect width="1600" height="900" fill="url(#skyBase)"/>
+
+        <!-- Sunburst Rays radiating from center (800, 415) -->
+        <g fill="#60a5fa" fill-opacity="0.22">
+          <polygon points="800,415 680,0 920,0"/>
+          <polygon points="800,415 1120,0 1380,0"/>
+          <polygon points="800,415 1600,110 1600,320"/>
+          <polygon points="800,415 1600,520 1600,740"/>
+          <polygon points="800,415 1360,900 1100,900"/>
+          <polygon points="800,415 910,900 690,900"/>
+          <polygon points="800,415 500,900 240,900"/>
+          <polygon points="800,415 0,740 0,520"/>
+          <polygon points="800,415 0,320 0,110"/>
+          <polygon points="800,415 220,0 480,0"/>
+        </g>
+
+        <rect width="1600" height="900" fill="url(#centerGlow)"/>
+
+        <!-- Subtle Floating Letter Tiles (B, A, E, L) -->
+        <g font-family="sans-serif" font-weight="900" font-size="38" text-anchor="middle" opacity="0.26">
+          <g transform="translate(150,110) rotate(-12)">
+            <rect x="-34" y="-34" width="68" height="68" rx="14" fill="#93c5fd" stroke="#ffffff" stroke-width="3"/>
+            <text y="13" fill="#1e3a8a">B</text>
+          </g>
+          <g transform="translate(260,65) rotate(8)">
+            <rect x="-30" y="-30" width="60" height="60" rx="12" fill="#93c5fd" stroke="#ffffff" stroke-width="3"/>
+            <text y="12" fill="#1e3a8a">A</text>
+          </g>
+          <g transform="translate(145,230) rotate(10)">
+            <rect x="-30" y="-30" width="60" height="60" rx="12" fill="#93c5fd" stroke="#ffffff" stroke-width="3"/>
+            <text y="12" fill="#1e3a8a">E</text>
+          </g>
+          <g transform="translate(1430,105) rotate(14)">
+            <rect x="-34" y="-34" width="68" height="68" rx="14" fill="#93c5fd" stroke="#ffffff" stroke-width="3"/>
+            <text y="13" fill="#1e3a8a">L</text>
+          </g>
+          <g transform="translate(1325,75) rotate(-9)">
+            <rect x="-28" y="-28" width="56" height="56" rx="12" fill="#93c5fd" stroke="#ffffff" stroke-width="3"/>
+            <text y="11" fill="#1e3a8a">C</text>
+          </g>
+        </g>
+
+        <!-- Perimeter Vocabulary Clues (Apple, Sandwich, Hotdog, Burger, Bananas, Orange, Grapes) -->
+        <g font-size="88" text-anchor="middle">
+          <text x="275" y="185" transform="rotate(-14 275 185)">🍎</text>
+          <text x="115" y="340" transform="rotate(-10 115 340)">🥪</text>
+          <text x="175" y="535" transform="rotate(14 175 535)">🌭</text>
+          <text x="1310" y="175" transform="rotate(12 1310 175)">🍔</text>
+          <text x="1465" y="355" transform="rotate(-12 1465 355)">🍌</text>
+          <text x="1450" y="545" transform="rotate(8 1450 545)">🍊</text>
+          <text x="1420" y="710" transform="rotate(-8 1420 710)">🍇</text>
+        </g>
+
+        <!-- Golden 5-Point Stars -->
+        <g fill="url(#starGold)" stroke="#ffffff" stroke-width="3" stroke-linejoin="round">
+          <polygon points="410,115 418,133 438,135 423,148 427,167 410,157 393,167 397,148 382,135 402,133"/>
+          <polygon points="1165,95 1173,113 1193,115 1178,128 1182,147 1165,137 1148,147 1152,128 1137,115 1157,113"/>
+          <polygon points="275,380 282,395 299,397 286,408 290,424 275,415 260,424 264,408 251,397 268,395"/>
+          <polygon points="1315,435 1322,450 1339,452 1326,463 1330,479 1315,470 1300,479 1304,463 1291,452 1308,450"/>
+          <polygon points="85,635 94,655 116,658 100,672 104,694 85,683 66,694 70,672 54,658 76,655"/>
+          <polygon points="1505,245 1511,258 1526,260 1515,270 1518,284 1505,276 1492,284 1495,270 1484,260 1499,258"/>
+        </g>
+
+        <!-- Bottom Left & Bottom Right Tropical Corner Leaves -->
+        <g>
+          <path d="M-20,910 C20,760 150,740 245,870 C140,895 60,910 -20,910 Z" fill="url(#leafGrad1)" stroke="#14532d" stroke-width="4"/>
+          <path d="M60,910 C120,790 250,790 320,910 Z" fill="url(#leafGrad2)" stroke="#14532d" stroke-width="4"/>
+          <path d="M-30,820 C40,700 140,720 175,835 C95,845 30,845 -30,820 Z" fill="url(#leafGrad2)" stroke="#14532d" stroke-width="4"/>
+
+          <path d="M1620,910 C1580,760 1450,740 1355,870 C1460,895 1540,910 1620,910 Z" fill="url(#leafGrad1)" stroke="#14532d" stroke-width="4"/>
+          <path d="M1540,910 C1480,790 1350,790 1280,910 Z" fill="url(#leafGrad2)" stroke="#14532d" stroke-width="4"/>
+          <path d="M1630,820 C1560,700 1460,720 1425,835 C1505,845 1570,845 1630,820 Z" fill="url(#leafGrad2)" stroke="#14532d" stroke-width="4"/>
+        </g>
+      </svg>
+    `)}`;
+
+    /**
+     * HOME HERO CARD ARTWORK (DECODE: THE TOP SECRET WORD GAME DETECTIVE EMBLEM)
+     */
+    const DECODE_HERO_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+        <defs>
+          <radialGradient id="heroSky" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#38bdf8"/>
+            <stop offset="55%" stop-color="#1d4ed8"/>
+            <stop offset="100%" stop-color="#1e1b4b"/>
+          </radialGradient>
+          <linearGradient id="goldLetters" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fef08a"/>
+            <stop offset="55%" stop-color="#facc15"/>
+            <stop offset="100%" stop-color="#ea580c"/>
+          </linearGradient>
+          <linearGradient id="woodBanner" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#b45309"/>
+            <stop offset="100%" stop-color="#78350f"/>
+          </linearGradient>
+          <linearGradient id="lensGlass" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#e0f2fe" stop-opacity="0.95"/>
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.75"/>
+          </linearGradient>
+        </defs>
+
+        <rect width="800" height="450" fill="url(#heroSky)"/>
+
+        <!-- Sunburst Rays -->
+        <g fill="#7dd3fc" fill-opacity="0.22">
+          <polygon points="400,210 310,0 490,0"/>
+          <polygon points="400,210 620,0 800,0"/>
+          <polygon points="400,210 800,140 800,290"/>
+          <polygon points="400,210 640,450 480,450"/>
+          <polygon points="400,210 320,450 160,450"/>
+          <polygon points="400,210 0,290 0,140"/>
+          <polygon points="400,210 0,0 180,0"/>
+        </g>
+
+        <!-- Left & Right 3x3 Detective Cipher Tile Grids -->
+        <g transform="translate(135, 115) rotate(-8)">
+          <rect x="-12" y="-12" width="184" height="184" rx="22" fill="#fef3c7" stroke="#92400e" stroke-width="5"/>
+          <rect x="4" y="4" width="46" height="46" rx="10" fill="#f97316"/><text x="27" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">1</text>
+          <rect x="57" y="4" width="46" height="46" rx="10" fill="#10b981"/><text x="80" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">A</text>
+          <rect x="110" y="4" width="46" height="46" rx="10" fill="#3b82f6"/><text x="133" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">2</text>
+          <rect x="4" y="57" width="46" height="46" rx="10" fill="#f43f5e"/><text x="27" y="89" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">B</text>
+          <rect x="57" y="57" width="46" height="46" rx="10" fill="#facc15"/><text x="80" y="89" fill="#78350f" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">C</text>
+          <rect x="110" y="57" width="46" height="46" rx="10" fill="#8b5cf6"/><text x="133" y="89" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">3</text>
+        </g>
+
+        <g transform="translate(505, 100) rotate(8)">
+          <rect x="-12" y="-12" width="184" height="184" rx="22" fill="#fef3c7" stroke="#92400e" stroke-width="5"/>
+          <rect x="4" y="4" width="46" height="46" rx="10" fill="#3b82f6"/><text x="27" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">A</text>
+          <rect x="57" y="4" width="46" height="46" rx="10" fill="#f43f5e"/><text x="80" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">4</text>
+          <rect x="110" y="4" width="46" height="46" rx="10" fill="#10b981"/><text x="133" y="36" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">D</text>
+          <rect x="4" y="57" width="46" height="46" rx="10" fill="#f97316"/><text x="27" y="89" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">B</text>
+          <rect x="57" y="57" width="46" height="46" rx="10" fill="#10b981"/><text x="80" y="89" fill="#fff" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">C</text>
+          <rect x="110" y="57" width="46" height="46" rx="10" fill="#facc15"/><text x="133" y="89" fill="#78350f" font-family="sans-serif" font-weight="900" font-size="26" text-anchor="middle">?</text>
+        </g>
+
+        <!-- Center Detective Hat & Dual Magnifying Badges -->
+        <g transform="translate(400, 145)">
+          <ellipse cx="0" cy="18" rx="135" ry="34" fill="#b45309" stroke="#451a03" stroke-width="5"/>
+          <path d="M-85,15 C-75,-55 75,-55 85,15 Z" fill="#d97706" stroke="#451a03" stroke-width="5"/>
+          <path d="M-82,4 Q0,18 82,4 L85,16 Q0,28 -85,16 Z" fill="#451a03"/>
+        </g>
+
+        <!-- Surrounding Clue Icons & Golden Stars -->
+        <text x="68" y="95" font-size="52">🍎</text>
+        <text x="48" y="210" font-size="50">🥪</text>
+        <text x="65" y="325" font-size="50">🌭</text>
+        <text x="705" y="95" font-size="52">🍔</text>
+        <text x="720" y="210" font-size="50">🍌</text>
+        <text x="712" y="320" font-size="48">🍊</text>
+        <text x="705" y="405" font-size="46">🍇</text>
+
+        <!-- Main 3D "DECODE" Emblem Banner -->
+        <g transform="translate(400, 315)">
+          <!-- Outer Royal Blue Shield -->
+          <rect x="-245" y="-68" width="490" height="112" rx="34" fill="#1e3a8a" stroke="#60a5fa" stroke-width="6"/>
+          <rect x="-235" y="-60" width="470" height="96" rx="28" fill="#1d4ed8"/>
+
+          <!-- D E C [Magnifier O] D E -->
+          <text x="-165" y="10" fill="url(#goldLetters)" stroke="#78350f" stroke-width="4" font-family="sans-serif" font-weight="900" font-size="78" text-anchor="middle">DEC</text>
+          <text x="155" y="10" fill="url(#goldLetters)" stroke="#78350f" stroke-width="4" font-family="sans-serif" font-weight="900" font-size="78" text-anchor="middle">DE</text>
+
+          <!-- Magnifying Glass "O" -->
+          <g transform="translate(15, -16)">
+            <line x1="26" y1="26" x2="56" y2="58" stroke="#0284c7" stroke-width="14" stroke-linecap="round"/>
+            <line x1="26" y1="26" x2="56" y2="58" stroke="#38bdf8" stroke-width="8" stroke-linecap="round"/>
+            <circle cx="0" cy="0" r="36" fill="url(#lensGlass)" stroke="#e2e8f0" stroke-width="9"/>
+            <path d="M-16,-14 A20,20 0 0,1 10,-18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+          </g>
+
+          <!-- Wooden Subtitle Plank: THE TOP SECRET WORD GAME -->
+          <rect x="-205" y="36" width="410" height="40" rx="14" fill="url(#woodBanner)" stroke="#451a03" stroke-width="4"/>
+          <text x="0" y="62" fill="#ffffff" font-family="sans-serif" font-weight="900" font-size="19" letter-spacing="1.5" text-anchor="middle">★ THE TOP SECRET WORD GAME ★</text>
+        </g>
+
+        <!-- Bottom Tropical Leaves -->
+        <path d="M0,450 C30,360 120,365 165,450 Z" fill="#22c55e" stroke="#14532d" stroke-width="4"/>
+        <path d="M800,450 C770,360 680,365 635,450 Z" fill="#22c55e" stroke="#14532d" stroke-width="4"/>
+      </svg>
+    `)}`;
+
+    /**
+     * BUILT-IN DEFAULT VOCABULARY DECK (16 ITEMS = 4 ROUNDS OF 4 ITEMS)
+     * Lowercase vocabulary words preserved throughout.
+     */
+    const DEFAULT_VOCABULARY = [
+      // Round 1: Items 1-4 (Nature & Science)
+      { id: 'def-1', word: 'volcano', image: '🌋' },
+      { id: 'def-2', word: 'microscope', image: '🔬' },
+      { id: 'def-3', word: 'telescope', image: '🔭' },
+      { id: 'def-4', word: 'compass', image: '🧭' },
+      // Round 2: Items 5-8 (Animals & Ocean)
+      { id: 'def-5', word: 'octopus', image: '🐙' },
+      { id: 'def-6', word: 'flamingo', image: '🦩' },
+      { id: 'def-7', word: 'hedgehog', image: '🦔' },
+      { id: 'def-8', word: 'chameleon', image: '🦎' },
+      // Round 3: Items 9-12 (Food & Culinary)
+      { id: 'def-9', word: 'croissant', image: '🥐' },
+      { id: 'def-10', word: 'avocado', image: '🥑' },
+      { id: 'def-11', word: 'pineapple', image: '🍍' },
+      { id: 'def-12', word: 'pretzel', image: '🥨' },
+      // Round 4: Items 13-16 (Travel & Objects)
+      { id: 'def-13', word: 'submarine', image: '🚤' },
+      { id: 'def-14', word: 'helicopter', image: '🚁' },
+      { id: 'def-15', word: 'lighthouse', image: '🗼' },
+      { id: 'def-16', word: 'parachute', image: '🪂' }
+    ];
+
+    /**
+     * DETECTIVE MYSTERY BACKGROUND MUSIC SEQUENCER (Web Audio API 6/8 Loop)
+     * Synthesizes the catchy playful detective theme (marimba/xylophone lead,
+     * plucked upright bass, vibraphone chords, and acoustic guitar arpeggios)
+     * plus optional custom uploaded MP3/audio loop.
+     */
+    class BackgroundMusicEngine {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+        this.masterGain = null;
+        this.isPlaying = false;
+        this.stepTimer = null;
+        this.stepIndex = 0;
+        this.customAudioEl = null;
+        this.usingCustomAudio = false;
+
+        // 6/8 Detective Mystery Groove (~108 dotted-quarter BPM -> eighth-note = 185ms)
+        this.stepMs = 185;
+        // 48 eighth-note steps (8 bars of 6/8 in D minor / A7 detective mystery)
+        this.leadNotes = [
+          // Bar 1 (Dm): D4 - F4 A4 D5 - A4
+          293.66, 0, 349.23, 440.00, 587.33, 440.00,
+          // Bar 2 (Dm): F4 - E4 D4 C#4 - A3
+          349.23, 0, 329.63, 293.66, 277.18, 220.00,
+          // Bar 3 (Gm): Bb3 - D4 G4 Bb4 - G4
+          233.08, 0, 293.66, 392.00, 466.16, 392.00,
+          // Bar 4 (A7): A4 - G4 F4 E4 - -
+          440.00, 0, 392.00, 349.23, 329.63, 0,
+          // Bar 5 (Dm): D5 - C5 Bb4 A4 - F4
+          587.33, 0, 523.25, 466.16, 440.00, 349.23,
+          // Bar 6 (Gm): G4 - A4 Bb4 G4 - E4
+          392.00, 0, 440.00, 466.16, 392.00, 329.63,
+          // Bar 7 (A7): F4 - E4 D4 C#4 - E4
+          349.23, 0, 329.63, 293.66, 277.18, 329.63,
+          // Bar 8 (Dm cadence): D4 - - D4 - -
+          293.66, 0, 0, 293.66, 0, 0
+        ];
+
+        this.bassNotes = [
+          // Bar 1 (Dm)
+          146.83, 0, 0, 110.00, 0, 130.81,
+          // Bar 2 (Dm)
+          146.83, 0, 0, 110.00, 0, 0,
+          // Bar 3 (Gm)
+          98.00, 0, 0, 116.54, 0, 130.81,
+          // Bar 4 (A7)
+          110.00, 0, 0, 138.59, 0, 164.81,
+          // Bar 5 (Dm)
+          146.83, 0, 0, 110.00, 0, 130.81,
+          // Bar 6 (Gm)
+          98.00, 0, 0, 116.54, 0, 130.81,
+          // Bar 7 (A7)
+          110.00, 0, 0, 164.81, 0, 138.59,
+          // Bar 8 (Dm)
+          146.83, 0, 110.00, 146.83, 0, 0
+        ];
+
+        // Acoustic guitar / vibraphone chord arpeggio pulses on beats 2, 3, 5, 6
+        this.chordNotes = [
+          0, 220.00, 261.63, 0, 293.66, 261.63,
+          0, 220.00, 261.63, 0, 277.18, 220.00,
+          0, 196.00, 233.08, 0, 293.66, 233.08,
+          0, 220.00, 277.18, 0, 329.63, 277.18,
+          0, 220.00, 261.63, 0, 293.66, 261.63,
+          0, 196.00, 233.08, 0, 293.66, 233.08,
+          0, 220.00, 277.18, 0, 329.63, 277.18,
+          0, 220.00, 293.66, 0, 0, 0
+        ];
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            this.ctx = new AudioCtx();
+            this.masterGain = this.ctx.createGain();
+            this.masterGain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+            this.masterGain.connect(this.ctx.destination);
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      }
+
+      start() {
+        if (!this.enabled) return;
+
+        if (this.usingCustomAudio && this.customAudioEl) {
+          this.customAudioEl.loop = true;
+          this.customAudioEl.volume = 0.4;
+          const playPromise = this.customAudioEl.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                this.isPlaying = true;
+              })
+              .catch(() => {
+                this.isPlaying = false;
+                // Retry on the very next user click/tap if browser blocked autoplay
+                const retryPlay = () => {
+                  if (this.enabled && this.usingCustomAudio && this.customAudioEl) {
+                    this.customAudioEl.play().then(() => {
+                      this.isPlaying = true;
+                    }).catch(() => {});
+                  }
+                  window.removeEventListener('pointerdown', retryPlay);
+                  window.removeEventListener('keydown', retryPlay);
+                };
+                window.addEventListener('pointerdown', retryPlay, { once: true });
+                window.addEventListener('keydown', retryPlay, { once: true });
+              });
+          } else {
+            this.isPlaying = true;
+          }
+          return;
+        }
+
+        if (this.isPlaying) return;
+
+        this.initContext();
+        if (!this.ctx) return;
+
+        this.isPlaying = true;
+        this.tick();
+        this.stepTimer = setInterval(() => this.tick(), this.stepMs);
+      }
+
+      stop() {
+        this.isPlaying = false;
+        if (this.stepTimer) {
+          clearInterval(this.stepTimer);
+          this.stepTimer = null;
+        }
+        if (this.customAudioEl) {
+          this.customAudioEl.pause();
+        }
+      }
+
+      setEnabled(flag) {
+        this.enabled = Boolean(flag);
+        if (this.enabled) {
+          this.start();
+        } else {
+          this.stop();
+        }
+      }
+
+      setCustomAudioUrl(dataUrl) {
+        this.stop();
+        if (!this.customAudioEl) {
+          this.customAudioEl = new Audio();
+          this.customAudioEl.preload = 'auto';
+        }
+        this.customAudioEl.src = dataUrl;
+        this.customAudioEl.load();
+        this.usingCustomAudio = true;
+        this.enabled = true;
+        this.start();
+      }
+
+      resetToBuiltInTheme() {
+        this.stop();
+        this.usingCustomAudio = false;
+        if (this.customAudioEl) {
+          this.customAudioEl.src = '';
+        }
+        if (this.enabled) {
+          this.start();
+        }
+      }
+
+      tick() {
+        if (!this.enabled || !this.isPlaying || !this.ctx) return;
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+
+        const idx = this.stepIndex % this.leadNotes.length;
+        const leadFreq = this.leadNotes[idx];
+        const bassFreq = this.bassNotes[idx];
+        const chordFreq = this.chordNotes[idx];
+
+        // 1. Marimba / Vibraphone Lead Melody
+        if (leadFreq > 0) {
+          this.triggerVoice(leadFreq, 'sine', 0.24, 0.22, true);
+        }
+
+        // 2. Pizzicato Upright Bass
+        if (bassFreq > 0) {
+          this.triggerVoice(bassFreq, 'triangle', 0.28, 0.24, false);
+        }
+
+        // 3. Acoustic Guitar / Celesta Offbeat Pulse
+        if (chordFreq > 0) {
+          this.triggerVoice(chordFreq, 'triangle', 0.14, 0.08, false);
+        }
+
+        this.stepIndex = (this.stepIndex + 1) % this.leadNotes.length;
+      }
+
+      triggerVoice(freq, waveType, duration, peakGain, addHarmonic) {
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = waveType;
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(0.0008, now);
+          gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + duration);
+
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+
+          // Crisp marimba overtone on lead notes
+          if (addHarmonic) {
+            const overtone = this.ctx.createOscillator();
+            const oGain = this.ctx.createGain();
+            overtone.type = 'triangle';
+            overtone.frequency.setValueAtTime(freq * 2, now);
+            oGain.gain.setValueAtTime(0.0005, now);
+            oGain.gain.exponentialRampToValueAtTime(peakGain * 0.28, now + 0.01);
+            oGain.gain.exponentialRampToValueAtTime(0.0005, now + 0.09);
+            overtone.connect(oGain);
+            oGain.connect(this.masterGain);
+            overtone.start(now);
+            overtone.stop(now + 0.1);
+          }
+        } catch (e) {
+          // Ignore transient Web Audio errors
+        }
+      }
+    }
+
+    const bgMusic = new BackgroundMusicEngine();
+
+    /**
+     * SOUND EFFECTS ENGINE (Web Audio API - Retro Decoder Sound Effects)
+     */
+    class SoundEngine {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'sine', duration = 0.14, delay = 0, gainVal = 0.14) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+
+          gain.gain.setValueAtTime(0.001, this.ctx.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(gainVal, this.ctx.currentTime + delay + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + delay + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(this.ctx.currentTime + delay);
+          osc.stop(this.ctx.currentTime + delay + duration + 0.02);
+        } catch (e) {
+          // Ignore audio context errors on restricted browsers
+        }
+      }
+
+      playTap() {
+        this.playTone(580, 'square', 0.06, 0, 0.07);
+      }
+
+      playTick() {
+        this.playTone(880, 'sine', 0.04, 0, 0.05);
+      }
+
+      playSuccess() {
+        this.playTone(523.25, 'triangle', 0.16, 0, 0.16);
+        this.playTone(659.25, 'triangle', 0.16, 0.09, 0.16);
+        this.playTone(783.99, 'triangle', 0.28, 0.18, 0.18);
+      }
+
+      playError() {
+        this.playTone(230, 'sawtooth', 0.16, 0, 0.1);
+        this.playTone(185, 'sawtooth', 0.22, 0.11, 0.1);
+      }
+
+      playFanfare() {
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((n, idx) => {
+          this.playTone(n, 'triangle', 0.24, idx * 0.11, 0.18);
+        });
+      }
+    }
+
+    const sfx = new SoundEngine();
+
+    /**
+     * APPLICATION STATE
+     */
+    const state = {
+      screen: 'home',                          // 'home' | 'game' | 'celebration'
+      fullDeck: [...DEFAULT_VOCABULARY],       // Complete validated teacher/default deck (divisible by 4)
+      activeItemLimit: null,                   // null = use all fullDeck items, or multiple of 4 (4, 8, 12...)
+      activeDeck: [...DEFAULT_VOCABULARY],     // Sliced playable deck (always multiple of 4)
+      stagingDeck: [...DEFAULT_VOCABULARY],    // Deck being edited in Teacher Modal
+      rounds: [],                              // Array of 4-item chunks: [[item1..4], [item5..8], ...]
+      currentRoundIndex: 0,                    // 0-based round pointer
+      leftOrder: [],                           // 4 items for left column
+      rightOrder: [],                          // 4 items for right column (numbered 1..4)
+      userAnswers: ['', '', '', ''],           // Entries for left rows 0..3
+      rowStatus: ['neutral', 'neutral', 'neutral', 'neutral'], // 'neutral' | 'correct' | 'incorrect'
+      focusedBoxIndex: 0,                      // Currently selected input box (0..3)
+      roundSolved: false,
+      score: 0,
+      totalAttempts: 0,
+      firstTryCorrectRounds: 0,
+      roundHadMistake: false,
+      // Organized Settings State
+      shuffleEnabled: true,
+      timerDuration: 0,                        // 0 (Off), 20, 30, 40, 60, 120 seconds
+      timerRemaining: 0,
+      timerIntervalId: null,
+      timerExpired: false,
+      customBackdropUrl: null
+    };
+
+    /**
+     * APPLY FULL-BLEED DETECTIVE BACKGROUND TO HOME & GAMEPLAY SCREENS
+     */
+    function applyBackdropTheme(screenMode = state.screen) {
+      const layer = document.getElementById('appBackdropLayer');
+      const dim = document.getElementById('appBackdropDim');
+      if (!layer || !dim) return;
+
+      const bgUrl = state.customBackdropUrl || DECODE_BACKDROP_SVG;
+      layer.style.backgroundImage = `url("${bgUrl}")`;
+
+      if (screenMode === 'home') {
+        dim.className = 'bg-slate-950/15';
+      } else {
+        // Subtle darker tint during gameplay so the 4-item 3D Decode console pops clearly
+        dim.className = 'bg-slate-950/38';
+      }
+    }
+
+    /**
+     * SYNC ALL MUSIC TOGGLE BUTTONS (HOME, GAME HEADER, SETTINGS MODAL)
+     */
+    function syncMusicUI() {
+      const isOn = bgMusic.enabled;
+
+      const homeIcon = document.getElementById('homeMusicIcon');
+      const homeLabel = document.getElementById('homeMusicLabel');
+      if (homeIcon) homeIcon.textContent = isOn ? '🎵' : '🔇';
+      if (homeLabel) homeLabel.textContent = isOn ? 'Music: ON' : 'Music: OFF';
+
+      const headerIcon = document.getElementById('headerMusicIcon');
+      if (headerIcon) headerIcon.textContent = isOn ? '🎵' : '🔇';
+
+      const settingBtn = document.getElementById('settingMusicToggle');
+      const settingEmoji = document.getElementById('settingMusicEmoji');
+      if (settingBtn) {
+        settingBtn.textContent = isOn ? 'ON' : 'OFF';
+        settingBtn.className = isOn
+          ? 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-amber-500 text-slate-950 shrink-0'
+          : 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-slate-300 text-slate-700 shrink-0';
+      }
+      if (settingEmoji) settingEmoji.textContent = isOn ? '🎵' : '🔇';
+    }
+
+    /**
+     * UTILITY: Fisher-Yates Shuffle (Returns new shuffled array)
+     */
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    /**
+     * UTILITY: Chunk an array into strict groups of 4
+     */
+    function chunkIntoFours(items) {
+      const chunks = [];
+      for (let i = 0; i < items.length; i += 4) {
+        const group = items.slice(i, i + 4);
+        if (group.length === 4) {
+          chunks.push(group);
+        }
+      }
+      return chunks;
+    }
+
+    /**
+     * UTILITY: Determine if an image string is a URL/DataURI or an Emoji/Text icon
+     */
+    function isImageUrl(str) {
+      if (!str || typeof str !== 'string') return false;
+      const trimmed = str.trim();
+      return (
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('data:image/') ||
+        trimmed.startsWith('/') ||
+        trimmed.startsWith('./') ||
+        /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(trimmed)
+      );
+    }
+
+    /**
+     * RENDER PICTURE CONTENT (Supports Image URLs, Data URLs + crisp Emojis)
+     */
+    function renderPictureHTML(item) {
+      const imgStr = (item.image || '').trim();
+      if (isImageUrl(imgStr)) {
+        const safeAlt = escapeHtml(item.word);
+        const fallbackUrl = `https://placehold.co/240x180/e2e8f0/1e293b?text=${encodeURIComponent(item.word)}`;
+        return `
+          <img
+            src="${escapeHtml(imgStr)}"
+            alt="${safeAlt}"
+            onerror="this.onerror=null; this.src='${fallbackUrl}';"
+            class="max-h-full max-w-full object-contain rounded-xl select-none pointer-events-none drop-shadow-sm"
+          />
+        `;
+      }
+      const displayIcon = imgStr || '🖼️';
+      return `
+        <span class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-none select-none drop-shadow-xs">
+          ${escapeHtml(displayIcon)}
+        </span>
+      `;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * SCREEN NAVIGATION HELPERS (HOME vs GAMEPLAY vs CELEBRATION)
+     */
+    function showHomeScreen() {
+      stopRoundTimer();
+      state.screen = 'home';
+      applyBackdropTheme('home');
+
+      document.getElementById('homeScreen').classList.remove('hidden');
+      document.getElementById('homeScreen').classList.add('flex');
+
+      document.getElementById('gameHeader').classList.add('hidden');
+      document.getElementById('gameplayStage').classList.add('hidden');
+      document.getElementById('gameplayStage').classList.remove('flex');
+      document.getElementById('bottomActionBar').classList.add('hidden');
+      document.getElementById('celebrationScreen').classList.add('hidden');
+      document.getElementById('celebrationScreen').classList.remove('flex');
+
+      syncActiveDeckFromLimit();
+      updateHomeDeckSummary();
+    }
+
+    function syncActiveDeckFromLimit() {
+      const maxLen = state.fullDeck.length;
+      if (
+        state.activeItemLimit &&
+        state.activeItemLimit >= 4 &&
+        state.activeItemLimit <= maxLen &&
+        state.activeItemLimit % 4 === 0
+      ) {
+        state.activeDeck = state.fullDeck.slice(0, state.activeItemLimit);
+      } else {
+        state.activeItemLimit = null;
+        state.activeDeck = [...state.fullDeck];
+      }
+    }
+
+    function updateHomeDeckSummary() {
+      const count = state.activeDeck.length;
+      const rounds = count / 4;
+      const badge = document.getElementById('homeDeckSummaryBadge');
+      if (badge) {
+        badge.textContent = `${count} items • ${rounds} round${rounds > 1 ? 's' : ''}`;
+      }
+    }
+
+    /**
+     * ROUND COUNTDOWN TIMER LOGIC
+     */
+    function stopRoundTimer() {
+      if (state.timerIntervalId) {
+        clearInterval(state.timerIntervalId);
+        state.timerIntervalId = null;
+      }
+    }
+
+    function formatSeconds(sec) {
+      const mins = Math.floor(sec / 60);
+      const rem = sec % 60;
+      return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`;
+    }
+
+    function updateTimerUI() {
+      const badge = document.getElementById('timerBadge');
+      const textEl = document.getElementById('timerText');
+      if (!badge || !textEl) return;
+
+      if (!state.timerDuration || state.timerDuration <= 0) {
+        badge.classList.add('hidden');
+        return;
+      }
+
+      badge.classList.remove('hidden');
+      textEl.textContent = formatSeconds(Math.max(0, state.timerRemaining));
+
+      if (state.timerRemaining <= 5 && state.timerRemaining > 0 && !state.roundSolved) {
+        badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm md:text-base font-mono font-extrabold bg-rose-950 text-rose-300 border border-rose-500 animate-pulse';
+      } else if (state.timerRemaining === 0 && !state.roundSolved) {
+        badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm md:text-base font-mono font-extrabold bg-rose-600 text-white border border-rose-300';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs sm:text-sm md:text-base font-mono font-extrabold bg-slate-800 text-amber-300 border border-amber-400/50 shadow-inner';
+      }
+    }
+
+    function startRoundTimer() {
+      stopRoundTimer();
+      state.timerExpired = false;
+
+      if (!state.timerDuration || state.timerDuration <= 0) {
+        updateTimerUI();
+        return;
+      }
+
+      state.timerRemaining = state.timerDuration;
+      updateTimerUI();
+
+      state.timerIntervalId = setInterval(() => {
+        if (state.roundSolved || state.screen !== 'game') {
+          stopRoundTimer();
+          return;
+        }
+
+        state.timerRemaining -= 1;
+        updateTimerUI();
+
+        if (state.timerRemaining > 0 && state.timerRemaining <= 5) {
+          sfx.playTick();
+        }
+
+        if (state.timerRemaining <= 0) {
+          stopRoundTimer();
+          state.timerExpired = true;
+          sfx.playError();
+          setFeedback(
+            'warning',
+            '⏰ Time is up for this round! Complete your 4-digit cipher or click Decode & Check to continue.'
+          );
+        }
+      }, 1000);
+    }
+
+    /**
+     * INITIALIZE OR RESTART FULL GAME FROM ACTIVE DECK
+     */
+    function startGame(deck = state.fullDeck) {
+      if (!deck || deck.length < 4 || deck.length % 4 !== 0) {
+        openTeacherModal();
+        return;
+      }
+
+      state.fullDeck = [...deck];
+      syncActiveDeckFromLimit();
+      updateHomeDeckSummary();
+
+      state.screen = 'game';
+      applyBackdropTheme('game');
+      state.rounds = chunkIntoFours(state.activeDeck);
+      state.currentRoundIndex = 0;
+      state.score = 0;
+      state.totalAttempts = 0;
+      state.firstTryCorrectRounds = 0;
+
+      if (bgMusic.enabled && !bgMusic.isPlaying) {
+        bgMusic.start();
+      }
+
+      // Transition from Home / Celebration to Gameplay Stage
+      document.getElementById('homeScreen').classList.add('hidden');
+      document.getElementById('homeScreen').classList.remove('flex');
+      document.getElementById('celebrationScreen').classList.add('hidden');
+      document.getElementById('celebrationScreen').classList.remove('flex');
+
+      document.getElementById('gameHeader').classList.remove('hidden');
+      document.getElementById('gameplayStage').classList.remove('hidden');
+      document.getElementById('gameplayStage').classList.add('flex');
+      document.getElementById('bottomActionBar').classList.remove('hidden');
+
+      loadRound(0);
+    }
+
+    /**
+     * LOAD A SPECIFIC ROUND OF EXACTLY 4 ITEMS
+     */
+    function loadRound(roundIndex) {
+      state.currentRoundIndex = roundIndex;
+      const currentFour = state.rounds[roundIndex];
+
+      if (state.shuffleEnabled) {
+        state.leftOrder = shuffleArray(currentFour);
+        state.rightOrder = shuffleArray(currentFour);
+        // Prevent identical vertical alignment across all 4 slots so students actively decode
+        if (state.leftOrder.every((item, idx) => item.id === state.rightOrder[idx].id)) {
+          state.rightOrder = [
+            state.rightOrder[1],
+            state.rightOrder[2],
+            state.rightOrder[3],
+            state.rightOrder[0]
+          ];
+        }
+      } else {
+        // Keep left in deck order, offset right by 1 so it remains a real matching puzzle
+        state.leftOrder = [...currentFour];
+        state.rightOrder = [
+          currentFour[1],
+          currentFour[2],
+          currentFour[3],
+          currentFour[0]
+        ];
+      }
+
+      state.userAnswers = ['', '', '', ''];
+      state.rowStatus = ['neutral', 'neutral', 'neutral', 'neutral'];
+      state.focusedBoxIndex = 0;
+      state.roundSolved = false;
+      state.roundHadMistake = false;
+
+      // Reset action buttons
+      document.getElementById('checkAnswersBtn').classList.remove('hidden');
+      document.getElementById('nextRoundBtn').classList.add('hidden');
+
+      updateHeaderIndicators();
+      setFeedback('neutral', 'Decode the 4 clues: enter numbers 1 – 4 in each picture slot.');
+      renderBoard();
+      focusAnswerBox(0);
+      startRoundTimer();
+    }
+
+    /**
+     * SHUFFLE CURRENT ROUND'S 4 ITEMS INDEPENDENTLY
+     */
+    function shuffleCurrentRound() {
+      if (state.roundSolved || state.screen !== 'game') return;
+      sfx.playTap();
+      const currentFour = state.rounds[state.currentRoundIndex];
+      state.leftOrder = shuffleArray(currentFour);
+      state.rightOrder = shuffleArray(currentFour);
+      if (state.leftOrder.every((item, idx) => item.id === state.rightOrder[idx].id)) {
+        state.rightOrder = [
+          state.rightOrder[1],
+          state.rightOrder[2],
+          state.rightOrder[3],
+          state.rightOrder[0]
+        ];
+      }
+      state.userAnswers = ['', '', '', ''];
+      state.rowStatus = ['neutral', 'neutral', 'neutral', 'neutral'];
+      state.focusedBoxIndex = 0;
+      renderBoard();
+      focusAnswerBox(0);
+      setFeedback('neutral', 'Cipher scrambled! Match the 4 clues to the newly numbered words.');
+    }
+
+    /**
+     * UPDATE HEADER ROUND INDICATOR ("ROUND X OF Y") & PROGRESS BAR
+     */
+    function updateHeaderIndicators() {
+      const totalRounds = state.rounds.length;
+      const currentNum = state.currentRoundIndex + 1;
+      document.getElementById('roundBadge').textContent = `ROUND ${currentNum} OF ${totalRounds}`;
+      document.getElementById('scoreBadge').textContent = `PTS: ${state.score}`;
+
+      const displayPct = state.roundSolved
+        ? Math.round((currentNum / totalRounds) * 100)
+        : Math.max(8, Math.round(((currentNum - 0.5) / totalRounds) * 100));
+
+      document.getElementById('roundProgressBar').style.width = `${displayPct}%`;
+    }
+
+    /**
+     * RENDER STRICT 2-COLUMN x 4-ROW 3D DECODE GAMEPLAY BOARD
+     */
+    function renderBoard() {
+      const leftCol = document.getElementById('leftPicturesCol');
+      const rightCol = document.getElementById('rightWordsCol');
+
+      leftCol.innerHTML = '';
+      rightCol.innerHTML = '';
+
+      // Render strictly 4 3D Picture Clue Cards + Recessed Decoder Input Slots on the Left
+      state.leftOrder.forEach((item, idx) => {
+        const status = state.rowStatus[idx];
+        const isFocused = state.focusedBoxIndex === idx && !state.roundSolved;
+
+        let cardStateClass = '';
+        let inputStyle = 'border-cyan-500/50 text-cyan-300 focus:border-cyan-300';
+        let statusBadgeHTML = '';
+
+        if (status === 'correct') {
+          cardStateClass = 'decode-card-correct';
+          inputStyle = 'border-emerald-400 text-emerald-300 font-extrabold';
+          statusBadgeHTML = `
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-md shrink-0">
+              ✓
+            </span>
+          `;
+        } else if (status === 'incorrect') {
+          cardStateClass = 'decode-card-incorrect animate-shake';
+          inputStyle = 'border-rose-400 text-rose-300 font-extrabold';
+          statusBadgeHTML = `
+            <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-sm sm:text-base shadow-md shrink-0">
+              ✕
+            </span>
+          `;
+        } else if (isFocused) {
+          cardStateClass = 'decode-card-focused';
+          inputStyle = 'border-amber-400 text-amber-300 ring-2 ring-amber-400/40';
+        }
+
+        const rowEl = document.createElement('div');
+        rowEl.className = `decode-card-3d ${cardStateClass} rounded-2xl px-3 sm:px-5 py-1.5 sm:py-2 flex items-center justify-between gap-2 sm:gap-4 min-h-0 overflow-hidden cursor-pointer`;
+        rowEl.onclick = () => {
+          if (!state.roundSolved) focusAnswerBox(idx);
+        };
+
+        rowEl.innerHTML = `
+          <!-- Clue Slot Index Pill -->
+          <span class="hidden sm:inline-flex items-center justify-center w-6 h-6 rounded-lg bg-slate-200 text-slate-600 font-mono font-extrabold text-xs shrink-0">
+            #${idx + 1}
+          </span>
+
+          <!-- Picture Container -->
+          <div class="flex-1 h-full flex items-center justify-center min-w-0 overflow-hidden py-0.5">
+            ${renderPictureHTML(item)}
+          </div>
+
+          <!-- Recessed 3D Decoder Input Slot + Status Indicator -->
+          <div class="flex items-center gap-2 shrink-0">
+            ${statusBadgeHTML}
+            <input
+              type="text"
+              inputmode="numeric"
+              maxlength="1"
+              aria-label="Cipher digit for picture ${idx + 1}"
+              data-box-index="${idx}"
+              value="${escapeHtml(state.userAnswers[idx])}"
+              ${state.roundSolved ? 'readonly' : ''}
+              placeholder="?"
+              class="answer-box decoder-slot-recessed w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl border-2 ${inputStyle} text-center font-mono font-extrabold text-2xl sm:text-3xl outline-none transition-all placeholder:text-slate-600"
+            />
+          </div>
+        `;
+
+        leftCol.appendChild(rowEl);
+      });
+
+      // Render strictly 4 Numbered Lowercase Vocabulary Word Plaques on the Right
+      state.rightOrder.forEach((item, idx) => {
+        const displayNum = idx + 1; // 1, 2, 3, 4
+        const isMatched =
+          state.roundSolved ||
+          state.leftOrder.some(
+            (leftItem, lIdx) =>
+              state.rowStatus[lIdx] === 'correct' && leftItem.id === item.id
+          );
+
+        const wordCardState = isMatched ? 'decode-card-correct' : '';
+        const numBadgeStyle = isMatched
+          ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white border-emerald-700'
+          : 'bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 border-blue-800';
+
+        const wordRowEl = document.createElement('div');
+        wordRowEl.className = `decode-card-3d ${wordCardState} rounded-2xl px-3 sm:px-5 py-2 flex items-center gap-3 sm:gap-4 min-h-0 overflow-hidden cursor-pointer`;
+
+        // Allow tapping a word plaque on ViewBoard/iPad to fill the currently focused decoder slot
+        wordRowEl.onclick = () => {
+          if (!state.roundSolved) {
+            enterNumberIntoFocusedBox(String(displayNum));
+          }
+        };
+
+        // Display vocabulary word in lowercase per design preference
+        const displayWord = String(item.word || '').toLowerCase();
+
+        wordRowEl.innerHTML = `
+          <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl ${numBadgeStyle} border-b-4 font-display font-extrabold text-xl sm:text-2xl md:text-3xl flex items-center justify-center shrink-0 shadow-sm">
+            ${displayNum}
+          </div>
+          <div class="font-display font-bold text-lg sm:text-2xl md:text-3xl text-slate-900 truncate leading-tight">
+            ${escapeHtml(displayWord)}
+          </div>
+        `;
+
+        rightCol.appendChild(wordRowEl);
+      });
+
+      attachInputListeners();
+    }
+
+    /**
+     * ATTACH KEYBOARD & FOCUS LISTENERS TO THE 4 DECODER SLOTS
+     */
+    function attachInputListeners() {
+      const inputs = document.querySelectorAll('.answer-box');
+      inputs.forEach((input) => {
+        const idx = Number(input.dataset.boxIndex);
+
+        input.addEventListener('focus', () => {
+          state.focusedBoxIndex = idx;
+          highlightFocusedCard(idx);
+        });
+
+        input.addEventListener('keydown', (e) => {
+          if (state.roundSolved) return;
+
+          if (['1', '2', '3', '4'].includes(e.key)) {
+            e.preventDefault();
+            enterNumberIntoFocusedBox(e.key, idx);
+          } else if (e.key === 'Backspace' || e.key === 'Delete') {
+            e.preventDefault();
+            state.userAnswers[idx] = '';
+            state.rowStatus[idx] = 'neutral';
+            renderBoard();
+            focusAnswerBox(idx);
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            focusAnswerBox((idx + 1) % 4);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            focusAnswerBox((idx + 3) % 4);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            checkCurrentRoundAnswers();
+          }
+        });
+      });
+    }
+
+    function highlightFocusedCard(idx) {
+      const cards = document.getElementById('leftPicturesCol').children;
+      Array.from(cards).forEach((card, i) => {
+        if (state.rowStatus[i] === 'neutral') {
+          if (i === idx) {
+            card.classList.add('decode-card-focused');
+          } else {
+            card.classList.remove('decode-card-focused');
+          }
+        }
+      });
+    }
+
+    function focusAnswerBox(idx) {
+      state.focusedBoxIndex = idx;
+      const box = document.querySelector(`.answer-box[data-box-index="${idx}"]`);
+      if (box) {
+        box.focus();
+      }
+      highlightFocusedCard(idx);
+    }
+
+    /**
+     * ENTER NUMBER (1-4) INTO FOCUSED DECODER SLOT & AUTO-ADVANCE
+     */
+    function enterNumberIntoFocusedBox(numStr, explicitIdx = null) {
+      if (state.roundSolved) return;
+      const targetIdx = explicitIdx !== null ? explicitIdx : state.focusedBoxIndex;
+
+      sfx.playTap();
+      state.userAnswers[targetIdx] = numStr;
+      state.rowStatus[targetIdx] = 'neutral';
+
+      // Auto-advance focus to next empty box
+      let nextIdx = targetIdx;
+      for (let step = 1; step <= 4; step++) {
+        const candidate = (targetIdx + step) % 4;
+        if (!state.userAnswers[candidate]) {
+          nextIdx = candidate;
+          break;
+        }
+      }
+      state.focusedBoxIndex = nextIdx;
+
+      renderBoard();
+      focusAnswerBox(nextIdx);
+    }
+
+    /**
+     * CHECK ALL 4 ANSWERS FOR THE CURRENT ROUND
+     */
+    function checkCurrentRoundAnswers() {
+      if (state.roundSolved) return;
+
+      const missingCount = state.userAnswers.filter((val) => !['1', '2', '3', '4'].includes(val)).length;
+      if (missingCount > 0) {
+        sfx.playError();
+        setFeedback(
+          'warning',
+          `Enter a cipher number (1–4) in all 4 slots before decoding (${missingCount} empty).`
+        );
+        const firstEmpty = state.userAnswers.findIndex((v) => !v);
+        if (firstEmpty !== -1) focusAnswerBox(firstEmpty);
+        return;
+      }
+
+      state.totalAttempts += 1;
+      let allCorrect = true;
+
+      state.leftOrder.forEach((leftItem, idx) => {
+        const chosenNum = Number(state.userAnswers[idx]); // 1..4
+        const matchedRightItem = state.rightOrder[chosenNum - 1];
+
+        if (matchedRightItem && matchedRightItem.id === leftItem.id) {
+          state.rowStatus[idx] = 'correct';
+        } else {
+          state.rowStatus[idx] = 'incorrect';
+          allCorrect = false;
+        }
+      });
+
+      if (allCorrect) {
+        stopRoundTimer();
+        state.roundSolved = true;
+        state.score += 100;
+        if (!state.roundHadMistake) {
+          state.firstTryCorrectRounds += 1;
+        }
+
+        sfx.playSuccess();
+        updateHeaderIndicators();
+        renderBoard();
+
+        const isLastRound = state.currentRoundIndex === state.rounds.length - 1;
+        document.getElementById('checkAnswersBtn').classList.add('hidden');
+        const nextBtn = document.getElementById('nextRoundBtn');
+        nextBtn.classList.remove('hidden');
+        document.getElementById('nextRoundBtnLabel').textContent = isLastRound
+          ? 'UNLOCK VAULT'
+          : 'NEXT ROUND';
+
+        setFeedback(
+          'success',
+          isLastRound
+            ? '🔓 Cipher Unlocked! All 4 match! Click UNLOCK VAULT to view your results.'
+            : '🔓 Cipher Unlocked! All 4 items match! Click NEXT ROUND to continue.'
+        );
+      } else {
+        state.roundHadMistake = true;
+        sfx.playError();
+        renderBoard();
+        const firstWrong = state.rowStatus.findIndex((s) => s === 'incorrect');
+        if (firstWrong !== -1) focusAnswerBox(firstWrong);
+
+        const correctCount = state.rowStatus.filter((s) => s === 'correct').length;
+        setFeedback(
+          'error',
+          `${correctCount} of 4 digits unlocked. Fix the red slots and click Decode & Check!`
+        );
+      }
+    }
+
+    /**
+     * ADVANCE TO NEXT GROUP OF 4 ITEMS OR END-OF-GAME CELEBRATION
+     */
+    function handleNextRound() {
+      if (!state.roundSolved) return;
+
+      if (state.currentRoundIndex + 1 < state.rounds.length) {
+        sfx.playTap();
+        loadRound(state.currentRoundIndex + 1);
+      } else {
+        showCelebrationScreen();
+      }
+    }
+
+    /**
+     * DISPLAY END-OF-GAME CELEBRATION SCREEN
+     */
+    function showCelebrationScreen() {
+      stopRoundTimer();
+      state.screen = 'celebration';
+      sfx.playFanfare();
+      document.getElementById('gameplayStage').classList.add('hidden');
+      document.getElementById('gameplayStage').classList.remove('flex');
+      document.getElementById('bottomActionBar').classList.add('hidden');
+
+      const celScreen = document.getElementById('celebrationScreen');
+      celScreen.classList.remove('hidden');
+      celScreen.classList.add('flex');
+
+      const totalRounds = state.rounds.length;
+      const totalWords = state.activeDeck.length;
+      const accuracy = Math.min(
+        100,
+        Math.round((totalRounds / Math.max(1, state.totalAttempts)) * 100)
+      );
+
+      document.getElementById('statRounds').textContent = `${totalRounds} / ${totalRounds}`;
+      document.getElementById('statWords').textContent = `${totalWords}`;
+      document.getElementById('statAccuracy').textContent = `${accuracy}%`;
+      document.getElementById('celebrationSubtitle').textContent =
+        `You cracked all ${totalRounds} rounds (${totalWords} vocabulary items)!`;
+    }
+
+    /**
+     * UPDATE FEEDBACK CONSOLE READOUT STYLING
+     */
+    function setFeedback(type, message) {
+      const el = document.getElementById('feedbackText');
+      el.textContent = message;
+      el.className = 'text-xs sm:text-sm md:text-base font-bold text-center px-4 py-1 rounded-full border shadow-inner transition-all ';
+
+      if (type === 'success') {
+        el.className += 'bg-emerald-950/90 text-emerald-300 border-emerald-400';
+      } else if (type === 'error') {
+        el.className += 'bg-rose-950/90 text-rose-300 border-rose-400';
+      } else if (type === 'warning') {
+        el.className += 'bg-amber-950/90 text-amber-300 border-amber-400';
+      } else {
+        el.className += 'bg-slate-950/90 text-cyan-200 border-cyan-500/40';
+      }
+    }
+
+    /* ===================================================================== */
+    /* ORGANIZED SETTINGS MODAL CONTROLLER                                   */
+    /* ===================================================================== */
+
+    function openSettingsModal() {
+      sfx.playTap();
+      refreshSettingsModalUI();
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function refreshSettingsModalUI() {
+      // 1. Shuffle button state
+      const shuffleBtn = document.getElementById('settingShuffleToggle');
+      shuffleBtn.textContent = state.shuffleEnabled ? 'ON' : 'OFF';
+      shuffleBtn.className = state.shuffleEnabled
+        ? 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-blue-600 text-white shrink-0'
+        : 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-slate-300 text-slate-700 shrink-0';
+
+      // 2. Sound button state
+      const soundBtn = document.getElementById('settingSoundToggle');
+      const soundEmoji = document.getElementById('settingSoundEmoji');
+      soundBtn.textContent = sfx.enabled ? 'ON' : 'OFF';
+      soundEmoji.textContent = sfx.enabled ? '🔊' : '🔇';
+      soundBtn.className = sfx.enabled
+        ? 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-emerald-600 text-white shrink-0'
+        : 'px-3.5 py-2 rounded-xl font-display font-bold text-xs sm:text-sm transition shadow-xs bg-slate-300 text-slate-700 shrink-0';
+
+      // 2b. BG Music button state
+      syncMusicUI();
+
+      // 3. Timer preset pills
+      const timerLabels = {
+        0: 'Off',
+        20: '20s',
+        30: '30s',
+        40: '40s',
+        60: '1 minute',
+        120: '2 minutes'
+      };
+      document.getElementById('settingTimerCurrentLabel').textContent =
+        timerLabels[state.timerDuration] || 'Off';
+
+      document.querySelectorAll('.timer-opt-btn').forEach((btn) => {
+        const val = Number(btn.dataset.timer);
+        const isSelected = val === state.timerDuration;
+        btn.className = isSelected
+          ? 'timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 border-blue-600 bg-blue-600 text-white shadow-xs transition'
+          : 'timer-opt-btn py-2.5 px-2 rounded-xl font-bold text-xs sm:text-sm border-2 border-slate-200 bg-white hover:border-blue-300 text-slate-700 transition';
+      });
+
+      // 4. Number of Items options (strictly multiples of 4 up to fullDeck.length)
+      const maxLen = state.fullDeck.length;
+      const activeCount = state.activeDeck.length;
+      const activeRounds = activeCount / 4;
+      document.getElementById('settingItemCountSummary').textContent =
+        `${activeCount} items • ${activeRounds} round${activeRounds > 1 ? 's' : ''} of 4`;
+
+      const countContainer = document.getElementById('itemCountOptionsContainer');
+      countContainer.innerHTML = '';
+
+      for (let n = 4; n <= maxLen; n += 4) {
+        const isAll = n === maxLen;
+        const isSelected = activeCount === n;
+        const rCount = n / 4;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = isAll ? `All (${n} items / ${rCount}R)` : `${n} items (${rCount}R)`;
+        btn.className = isSelected
+          ? 'px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm bg-blue-600 text-white border-2 border-blue-600 shadow-xs transition'
+          : 'px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm bg-white hover:bg-blue-50 text-slate-700 border-2 border-slate-200 transition';
+
+        btn.addEventListener('click', () => {
+          sfx.playTap();
+          state.activeItemLimit = isAll ? null : n;
+          syncActiveDeckFromLimit();
+          updateHomeDeckSummary();
+          refreshSettingsModalUI();
+          if (state.screen === 'game') {
+            startGame(state.fullDeck);
+          }
+        });
+
+        countContainer.appendChild(btn);
+      }
+
+      // 5. Fullscreen status text
+      const isFs = Boolean(document.fullscreenElement);
+      document.getElementById('settingFullscreenStatus').textContent = isFs
+        ? 'Currently in Full Screen'
+        : 'Expand for ViewBoard / iPad';
+
+      // 6. Reshuffle current round button visibility
+      const reshuffleRow = document.getElementById('settingsReshuffleRow');
+      if (state.screen === 'game' && !state.roundSolved) {
+        reshuffleRow.classList.remove('hidden');
+      } else {
+        reshuffleRow.classList.add('hidden');
+      }
+    }
+
+    function toggleFullscreen() {
+      sfx.playTap();
+      try {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (e) {
+        // Ignore if blocked by iframe sandbox
+      }
+      setTimeout(refreshSettingsModalUI, 150);
+    }
+
+    /* ===================================================================== */
+    /* TEACHER JSON MANAGEMENT & IMAGE UPLOAD / URL BUILDER                  */
+    /* ===================================================================== */
+
+    function openTeacherModal() {
+      state.stagingDeck = [...state.fullDeck];
+      document.getElementById('quickAddMissingForm').classList.add('hidden');
+      updateManualImagePreview('');
+      document.getElementById('teacherModal').classList.remove('hidden');
+      refreshTeacherModalUI();
+    }
+
+    function closeTeacherModal() {
+      document.getElementById('teacherModal').classList.add('hidden');
+    }
+
+    function updateManualImagePreview(val) {
+      const box = document.getElementById('manualImagePreviewBox');
+      if (!box) return;
+      const trimmed = (val || '').trim();
+      if (isImageUrl(trimmed)) {
+        box.innerHTML = `<img src="${escapeHtml(trimmed)}" alt="Preview" onerror="this.parentElement.textContent='⚠️'" class="w-full h-full object-cover" />`;
+      } else {
+        box.textContent = trimmed || '🖼️';
+      }
+    }
+
+    /**
+     * READ UPLOADED IMAGE FILE AS DATA URL (FOR PRE-PREPARED TEACHER QUESTIONS)
+     */
+    function readImageFileAsDataUrl(file, callback) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        callback(ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    /**
+     * VALIDATE STAGING DECK AGAINST STRICT DIVISIBILITY BY 4 RULE
+     */
+    function refreshTeacherModalUI() {
+      const count = state.stagingDeck.length;
+      const remainder = count % 4;
+      const isValid = count >= 4 && remainder === 0;
+
+      document.getElementById('deckTotalCount').textContent = count;
+
+      const alertBox = document.getElementById('divisibilityAlertBox');
+      const roundSummary = document.getElementById('deckRoundSummary');
+      const startBtn = document.getElementById('applyAndStartGameBtn');
+      const footerStatus = document.getElementById('modalFooterStatus');
+
+      if (isValid) {
+        const numRounds = count / 4;
+        alertBox.classList.add('hidden');
+        document.getElementById('quickAddMissingForm').classList.add('hidden');
+
+        roundSummary.textContent = `${numRounds} Complete Round${numRounds > 1 ? 's' : ''} (4 items/round)`;
+        roundSummary.className = 'text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800';
+
+        startBtn.disabled = false;
+        footerStatus.textContent = `Valid deck: ${count} items → ${numRounds} round${numRounds > 1 ? 's' : ''} of 4.`;
+        footerStatus.className = 'text-xs sm:text-sm font-bold text-emerald-700';
+      } else {
+        alertBox.classList.remove('hidden');
+        startBtn.disabled = true;
+
+        const neededToComplete = remainder === 0 ? 4 : 4 - remainder;
+        const extraItems = remainder;
+
+        const msgEl = document.getElementById('divisibilityMessage');
+        const addBtnText = document.getElementById('resolveAddMissingText');
+        const excludeBtn = document.getElementById('resolveExcludeExtraBtn');
+        const excludeBtnText = document.getElementById('resolveExcludeExtraText');
+
+        if (count < 4) {
+          msgEl.textContent = `You have ${count} item${count === 1 ? '' : 's'}. A round requires strictly 4 vocabulary items. Please add ${neededToComplete} more item${neededToComplete === 1 ? '' : 's'}.`;
+          addBtnText.textContent = `Add ${neededToComplete} More Item${neededToComplete === 1 ? '' : 's'}`;
+          excludeBtn.classList.add('hidden');
+        } else {
+          const validRoundsIfTrimmed = Math.floor(count / 4);
+          msgEl.textContent = `You uploaded ${count} items. Games require sets of 4 items, leaving ${extraItems} extra item${extraItems === 1 ? '' : 's'}. Add ${neededToComplete} more item${neededToComplete === 1 ? '' : 's'} (for ${validRoundsIfTrimmed + 1} rounds) or exclude the last ${extraItems} item${extraItems === 1 ? '' : 's'} (for ${validRoundsIfTrimmed} rounds).`;
+          addBtnText.textContent = `Add ${neededToComplete} More Item${neededToComplete === 1 ? '' : 's'}`;
+          excludeBtn.classList.remove('hidden');
+          excludeBtnText.textContent = `Exclude Last ${extraItems} Item${extraItems === 1 ? '' : 's'}`;
+        }
+
+        roundSummary.textContent = `Not divisible by 4 (${count} items)`;
+        roundSummary.className = 'text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-900';
+
+        footerStatus.textContent = `Resolve the ${neededToComplete} missing or ${extraItems} extra item(s) above to start.`;
+        footerStatus.className = 'text-xs sm:text-sm font-bold text-amber-800';
+      }
+
+      renderStagingDeckList();
+    }
+
+    /**
+     * RENDER PREVIEW OF STAGING ITEMS GROUPED INTO ROUNDS OF 4
+     */
+    function renderStagingDeckList() {
+      const container = document.getElementById('deckItemsList');
+      container.innerHTML = '';
+
+      if (state.stagingDeck.length === 0) {
+        container.innerHTML = `<p class="text-sm text-slate-500 col-span-2 py-4 text-center">No vocabulary items loaded yet.</p>`;
+        return;
+      }
+
+      state.stagingDeck.forEach((item, idx) => {
+        const roundNum = Math.floor(idx / 4) + 1;
+        const isIncompleteGroup =
+          idx >= Math.floor(state.stagingDeck.length / 4) * 4;
+
+        const badgeClass = isIncompleteGroup
+          ? 'bg-amber-200 text-amber-950'
+          : 'bg-blue-100 text-blue-800';
+
+        const thumbHTML = isImageUrl(item.image)
+          ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.word)}" class="w-8 h-8 rounded-lg object-cover border border-slate-200 shrink-0" />`
+          : `<span class="text-xl shrink-0">${escapeHtml(item.image || '🖼️')}</span>`;
+
+        const card = document.createElement('div');
+        card.className = `flex items-center justify-between gap-2.5 p-2.5 rounded-xl border ${
+          isIncompleteGroup ? 'border-amber-300 bg-amber-50/70' : 'border-slate-200 bg-white'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-md ${badgeClass} shrink-0">
+              R${roundNum}
+            </span>
+            ${thumbHTML}
+            <span class="font-bold text-sm text-slate-800 truncate">
+              ${escapeHtml(String(item.word).toLowerCase())}
+            </span>
+          </div>
+          <button type="button" data-remove-idx="${idx}" title="Remove item"
+            class="w-7 h-7 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 font-bold text-sm flex items-center justify-center transition shrink-0">
+            ✕
+          </button>
+        `;
+
+        container.appendChild(card);
+      });
+
+      container.querySelectorAll('[data-remove-idx]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const removeIdx = Number(btn.dataset.removeIdx);
+          state.stagingDeck.splice(removeIdx, 1);
+          refreshTeacherModalUI();
+        });
+      });
+    }
+
+    /**
+     * PARSE & NORMALIZE UPLOADED OR PASTED JSON DATA
+     */
+    function processJsonInput(rawText) {
+      try {
+        const parsed = JSON.parse(rawText);
+        let rawList = Array.isArray(parsed)
+          ? parsed
+          : Array.isArray(parsed.items)
+          ? parsed.items
+          : Array.isArray(parsed.vocabulary)
+          ? parsed.vocabulary
+          : null;
+
+        if (!rawList) {
+          throw new Error('JSON must be an array of objects like [{"word": "cat", "image": "🐱"}, ...].');
+        }
+
+        const normalized = rawList
+          .map((entry, idx) => {
+            if (!entry || typeof entry !== 'object') return null;
+            const word = String(entry.word || entry.term || entry.name || entry.text || '').trim().toLowerCase();
+            const image = String(entry.image || entry.img || entry.picture || entry.icon || entry.emoji || '🖼️').trim();
+            if (!word) return null;
+            return {
+              id: `custom-${Date.now()}-${idx}`,
+              word,
+              image
+            };
+          })
+          .filter(Boolean);
+
+        if (normalized.length === 0) {
+          throw new Error('No valid vocabulary items with a "word" field were found in the JSON.');
+        }
+
+        state.stagingDeck = normalized;
+        document.getElementById('quickAddMissingForm').classList.add('hidden');
+        refreshTeacherModalUI();
+      } catch (err) {
+        const alertBox = document.getElementById('divisibilityAlertBox');
+        alertBox.classList.remove('hidden');
+        document.getElementById('divisibilityMessage').textContent = `JSON Parse Error: ${err.message}`;
+      }
+    }
+
+    /**
+     * EVENT LISTENERS WIRING
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Set Home Hero Image & Full-bleed Detective Sunburst Backdrop
+      const heroImg = document.getElementById('homeHeroImage');
+      if (heroImg) {
+        heroImg.src = DECODE_HERO_SVG;
+      }
+      applyBackdropTheme('home');
+      syncMusicUI();
+
+      // Auto-start detective background music on first user gesture (browser policy compliant)
+      const unlockMusicOnce = () => {
+        if (bgMusic.enabled && !bgMusic.isPlaying) {
+          bgMusic.start();
+        }
+        window.removeEventListener('pointerdown', unlockMusicOnce);
+        window.removeEventListener('keydown', unlockMusicOnce);
+      };
+      window.addEventListener('pointerdown', unlockMusicOnce);
+      window.addEventListener('keydown', unlockMusicOnce);
+
+      // Music Toggle Handlers (Home, Gameplay Header & Settings)
+      const toggleMusicHandler = () => {
+        bgMusic.setEnabled(!bgMusic.enabled);
+        syncMusicUI();
+      };
+      document.getElementById('homeMusicToggleBtn').addEventListener('click', toggleMusicHandler);
+      document.getElementById('headerMusicBtn').addEventListener('click', toggleMusicHandler);
+      document.getElementById('settingMusicToggle').addEventListener('click', toggleMusicHandler);
+
+      // Custom Background Image & Custom Audio Upload in Settings
+      document.getElementById('customBgUploadInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        readImageFileAsDataUrl(file, (dataUrl) => {
+          state.customBackdropUrl = dataUrl;
+          if (heroImg) heroImg.src = dataUrl;
+          applyBackdropTheme(state.screen);
+        });
+        e.target.value = '';
+      });
+
+      document.getElementById('resetDefaultBgBtn').addEventListener('click', () => {
+        state.customBackdropUrl = null;
+        if (heroImg) heroImg.src = DECODE_HERO_SVG;
+        applyBackdropTheme(state.screen);
+      });
+
+      document.getElementById('customMusicUploadInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          bgMusic.setCustomAudioUrl(ev.target.result);
+          document.getElementById('resetDefaultMusicBtn').classList.remove('hidden');
+          syncMusicUI();
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+      });
+
+      document.getElementById('resetDefaultMusicBtn').addEventListener('click', () => {
+        bgMusic.resetToBuiltInTheme();
+        document.getElementById('resetDefaultMusicBtn').classList.add('hidden');
+        syncMusicUI();
+      });
+
+      // Home Screen Buttons
+      document.getElementById('homeStartGameBtn').addEventListener('click', () => {
+        sfx.playTap();
+        if (bgMusic.enabled && !bgMusic.isPlaying) {
+          bgMusic.start();
+        }
+        startGame(state.fullDeck);
+      });
+      document.getElementById('homeOpenSettingsBtn').addEventListener('click', openSettingsModal);
+      document.getElementById('homeOpenTeacherBtn').addEventListener('click', openTeacherModal);
+      document.getElementById('backToHomeBtn').addEventListener('click', () => {
+        sfx.playTap();
+        showHomeScreen();
+      });
+
+      // Keypad buttons (1-4)
+      document.querySelectorAll('.keypad-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          enterNumberIntoFocusedBox(btn.dataset.keypad);
+        });
+      });
+
+      // Clear inputs button
+      document.getElementById('clearInputsBtn').addEventListener('click', () => {
+        if (state.roundSolved) return;
+        sfx.playTap();
+        state.userAnswers = ['', '', '', ''];
+        state.rowStatus = ['neutral', 'neutral', 'neutral', 'neutral'];
+        renderBoard();
+        focusAnswerBox(0);
+      });
+
+      // Check Answers & Next Round buttons
+      document.getElementById('checkAnswersBtn').addEventListener('click', checkCurrentRoundAnswers);
+      document.getElementById('nextRoundBtn').addEventListener('click', handleNextRound);
+
+      // Header Fullscreen & Settings buttons
+      document.getElementById('headerFullscreenBtn').addEventListener('click', toggleFullscreen);
+      document.getElementById('openSettingsModalBtn').addEventListener('click', openSettingsModal);
+
+      // Organized Settings Modal controls
+      document.getElementById('closeSettingsModalBtn').addEventListener('click', closeSettingsModal);
+      document.getElementById('doneSettingsBtn').addEventListener('click', closeSettingsModal);
+
+      document.getElementById('settingShuffleToggle').addEventListener('click', () => {
+        state.shuffleEnabled = !state.shuffleEnabled;
+        sfx.playTap();
+        refreshSettingsModalUI();
+      });
+
+      document.getElementById('settingSoundToggle').addEventListener('click', () => {
+        sfx.enabled = !sfx.enabled;
+        if (sfx.enabled) sfx.playTap();
+        refreshSettingsModalUI();
+      });
+
+      document.querySelectorAll('.timer-opt-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.timerDuration = Number(btn.dataset.timer);
+          sfx.playTap();
+          refreshSettingsModalUI();
+          if (state.screen === 'game' && !state.roundSolved) {
+            startRoundTimer();
+          } else {
+            updateTimerUI();
+          }
+        });
+      });
+
+      document.getElementById('settingFullscreenBtn').addEventListener('click', toggleFullscreen);
+
+      document.getElementById('settingOpenTeacherJsonBtn').addEventListener('click', () => {
+        closeSettingsModal();
+        openTeacherModal();
+      });
+
+      document.getElementById('settingsReshuffleNowBtn').addEventListener('click', () => {
+        closeSettingsModal();
+        shuffleCurrentRound();
+      });
+
+      // Celebration screen actions
+      document.getElementById('playAgainBtn').addEventListener('click', () => {
+        sfx.playTap();
+        startGame(state.fullDeck);
+      });
+      document.getElementById('celebrationSettingsBtn').addEventListener('click', openSettingsModal);
+
+      // Teacher Modal open/close
+      document.getElementById('closeTeacherModalBtn').addEventListener('click', closeTeacherModal);
+      document.getElementById('cancelModalBtn').addEventListener('click', closeTeacherModal);
+
+      // Live preview for URL/emoji input & local image file upload
+      const manualImgInput = document.getElementById('manualImageInput');
+      manualImgInput.addEventListener('input', (e) => {
+        updateManualImagePreview(e.target.value);
+      });
+
+      document.getElementById('manualImageFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        readImageFileAsDataUrl(file, (dataUrl) => {
+          manualImgInput.value = dataUrl;
+          updateManualImagePreview(dataUrl);
+        });
+        e.target.value = '';
+      });
+
+      // File upload handler for JSON
+      document.getElementById('jsonFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          document.getElementById('rawJsonTextarea').value = ev.target.result;
+          processJsonInput(ev.target.result);
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+
+      // Paste JSON button
+      document.getElementById('parsePastedJsonBtn').addEventListener('click', () => {
+        const raw = document.getElementById('rawJsonTextarea').value.trim();
+        if (raw) processJsonInput(raw);
+      });
+
+      // Export Current Deck as JSON (preserves URLs & uploaded Data URLs)
+      document.getElementById('exportCurrentJsonBtn').addEventListener('click', () => {
+        const exportData = state.stagingDeck.map(({ word, image }) => ({ word, image }));
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vocabmatch_${exportData.length}_items.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      // Reset to built-in 16-item deck
+      document.getElementById('loadPresetDeckBtn').addEventListener('click', () => {
+        state.stagingDeck = [...DEFAULT_VOCABULARY];
+        document.getElementById('rawJsonTextarea').value = '';
+        refreshTeacherModalUI();
+      });
+
+      // Download sample JSON template
+      document.getElementById('downloadSampleJsonBtn').addEventListener('click', () => {
+        const sampleData = [
+          { word: 'astronaut', image: '👩‍🚀' },
+          { word: 'satellite', image: '🛰️' },
+          { word: 'galaxy', image: '🌌' },
+          { word: 'meteor', image: '☄️' },
+          { word: 'dinosaur', image: '🦖' },
+          { word: 'fossil', image: '🦴' },
+          { word: 'pyramid', image: '🏜️' },
+          { word: 'treasure', image: '💎' }
+        ];
+        const blob = new Blob([JSON.stringify(sampleData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vocabulary_8_items_sample.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      // Add single manual item
+      document.getElementById('addManualItemBtn').addEventListener('click', () => {
+        const wordEl = document.getElementById('manualWordInput');
+        const imgEl = document.getElementById('manualImageInput');
+        const word = wordEl.value.trim().toLowerCase();
+        const image = imgEl.value.trim() || '🖼️';
+        if (!word) {
+          wordEl.focus();
+          return;
+        }
+
+        state.stagingDeck.push({
+          id: `manual-${Date.now()}`,
+          word,
+          image
+        });
+        wordEl.value = '';
+        imgEl.value = '';
+        updateManualImagePreview('');
+        refreshTeacherModalUI();
+      });
+
+      // Resolution Option 1: Add X More Item(s) inline form (supports URL + local image upload)
+      document.getElementById('resolveAddMissingBtn').addEventListener('click', () => {
+        const count = state.stagingDeck.length;
+        const remainder = count % 4;
+        const needed = remainder === 0 ? 4 : 4 - remainder;
+
+        const container = document.getElementById('quickAddInputsContainer');
+        container.innerHTML = '';
+
+        for (let i = 0; i < needed; i++) {
+          const row = document.createElement('div');
+          row.className = 'grid grid-cols-1 sm:grid-cols-12 gap-2 items-center';
+          row.innerHTML = `
+            <input type="text" placeholder="New word #${i + 1} (required)"
+              class="quick-missing-word sm:col-span-5 px-3 py-2 rounded-xl border border-amber-300 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="text" placeholder="Image URL, emoji, or upload →"
+              class="quick-missing-img sm:col-span-5 px-3 py-2 rounded-xl border border-amber-300 bg-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="sm:col-span-2 cursor-pointer py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs text-center transition">
+              📁 Upload
+              <input type="file" accept="image/*" class="quick-missing-file hidden" />
+            </label>
+          `;
+          container.appendChild(row);
+        }
+
+        // Bind file upload for each quick-missing row
+        container.querySelectorAll('.quick-missing-file').forEach((fileInput, idx) => {
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            readImageFileAsDataUrl(file, (dataUrl) => {
+              const imgInputs = container.querySelectorAll('.quick-missing-img');
+              if (imgInputs[idx]) imgInputs[idx].value = dataUrl;
+            });
+            e.target.value = '';
+          });
+        });
+
+        document.getElementById('quickAddMissingForm').classList.remove('hidden');
+      });
+
+      // Save Quick-Added Missing Items
+      document.getElementById('submitQuickAddBtn').addEventListener('click', () => {
+        const wordInputs = document.querySelectorAll('.quick-missing-word');
+        const imgInputs = document.querySelectorAll('.quick-missing-img');
+        const newItems = [];
+
+        for (let i = 0; i < wordInputs.length; i++) {
+          const w = wordInputs[i].value.trim().toLowerCase();
+          const im = imgInputs[i].value.trim() || '🖼️';
+          if (!w) {
+            wordInputs[i].focus();
+            wordInputs[i].classList.add('border-rose-500');
+            return;
+          }
+          newItems.push({
+            id: `quick-${Date.now()}-${i}`,
+            word: w,
+            image: im
+          });
+        }
+
+        state.stagingDeck.push(...newItems);
+        document.getElementById('quickAddMissingForm').classList.add('hidden');
+        refreshTeacherModalUI();
+      });
+
+      // Resolution Option 2: Exclude Last X Remainder Item(s)
+      document.getElementById('resolveExcludeExtraBtn').addEventListener('click', () => {
+        const count = state.stagingDeck.length;
+        const validLength = Math.floor(count / 4) * 4;
+        if (validLength >= 4) {
+          state.stagingDeck = state.stagingDeck.slice(0, validLength);
+          refreshTeacherModalUI();
+        }
+      });
+
+      // Apply Validated Deck & Start Game
+      document.getElementById('applyAndStartGameBtn').addEventListener('click', () => {
+        if (state.stagingDeck.length >= 4 && state.stagingDeck.length % 4 === 0) {
+          state.activeItemLimit = null;
+          closeTeacherModal();
+          startGame(state.stagingDeck);
+        }
+      });
+
+      // Start on the Home Screen with the framed 3D Decode Hero Showcase
+      showHomeScreen();
+    });
+  </script>
+</body>
+</html>
